@@ -26,6 +26,10 @@ function on_dynahud_ui_read(xml_obj)
 end
 
 function on_maingame_16_read(xml_obj)
+	-- Tage `progress_bar_stamina` and apply `height` of `2` (same as psy bar).
+	local stamina_bar_element_object = xml_obj:query("progress_bar_stamina")[1]
+	xml_obj:setElementAttr(stamina_bar_element_object, { height = 2 })
+
 	-- Take `progress_bar_psy` and apply `y` of `703`.
 	local progress_bar_psy_element_object = xml_obj:query("progress_bar_psy")[1]
 	xml_obj:setElementAttr(progress_bar_psy_element_object, { y = 707 })
