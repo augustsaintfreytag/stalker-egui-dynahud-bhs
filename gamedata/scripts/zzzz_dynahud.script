@@ -78,7 +78,6 @@ local DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD = 600
 local DYNAHUD_DYNAMIC_COLD_SYSTEM_CRITICAL_THRESHOLD = 1800
 local DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT = 100
 local DYNAHUD_DYNAMIC_COLD_SYSTEM_SHOW_RECOVERY = false
-local cold_val_next_breakpoint = 0
 local DYNAHUD_DYNAMIC_COLD_SYSTEM_HUD_KEYBIND = 0
 
 DYNAHUD_ICONS_HUD_TIMERS = false
@@ -94,6 +93,7 @@ local minimap_while_weapon_equipped = nil
 local last_weapon_equipped = nil
 local companion_hud_visible = true
 local weapon_is_lowered = nil
+local cold_val_next_breakpoint = 0
 
 ------------------------- BHS PATCH AWARENESS ----------------------
 -- 0 BHS | 1 BHS_GAMMA - | 2 BSH_EFP4
