@@ -28,7 +28,7 @@ end
 function on_maingame_16_read(xml_obj)
 	-- Take `progress_bar_psy` and apply `y` of `703`.
 	local progress_bar_psy_element_object = xml_obj:query("progress_bar_psy")[1]
-	xml_obj:setElementAttr(progress_bar_psy_element_object, { y = 706 })
+	xml_obj:setElementAttr(progress_bar_psy_element_object, { y = 707 })
 end
 
 -- General init
