@@ -1,0 +1,1875 @@
+---@diagnostic disable: undefined-global
+------------------------ Dynahud ------------------------
+-- Strangerism
+------------------------ ----------- ------------------------
+USE_UPDATE_STEP = true
+
+------------------------ DYNA HUD GLOBAL VARIABLES  ------------------------
+local last_time_health_change = nil
+local last_time_dyn_bhs_updated = nil
+local dynahud_bhs_hud_visible = nil
+local dynahud_dynamic_bhs_hud_on = nil
+local dynahud_pref_hud_type = nil
+local limbs_fully_healed = nil
+local myhealth = 0
+local last_time_unequipped = nil
+local bhs_hud_dismissed = nil
+local time_bhs_hud_dismissed = nil
+local limbs_total_injury = nil
+local previous_limbs_total_injury = nil
+local bhs_change_state = nil
+
+inventory_opened = nil
+weapon_is_equipped = nil
+weapon_hud_visible = nil
+rad_hud_enabled = true
+
+-- SYSTEM PARAMS
+local DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_TICK = 1000               -- time between each BHS visibility update checks
+local DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT_MAX = 15 * 60000 -- in seconds
+
+--- MCM PARAMS
+local DYNAHUD_MAIN_HUD_AUTOHIDE = false
+local DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE = false
+local DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT = 10000   -- time for the BHS hud to hide if conditions are met
+local DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD = 0.99         -- min value of health for the bar to become visible
+local DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT = 30000 -- time for the health bar to hide after last health value change
+local DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD = 0.60          -- min value of power for the bar to become visible
+local DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD = 0.99            -- min value of psy for the bar to become visible
+local DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT = 5000
+local DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT_DISABLE = 60 * 1000
+local DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW = true
+local DYNAHUD_MAIN_HUD_PREVIEW_TIME = 5000
+local DYNAHUD_ICONS_HUD_AUTOHIDE = true
+local DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT = 20000
+local DYNAHUD_ICONS_HUD_PREVIEW = true
+local DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER = true
+local DYNAHUD_ICONS_HUD_PREVIEW_TIME = 5000
+local DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW = true
+local DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE = false
+local DYNAHUD_DYNAMIC_MINIMAP_HIDE = false
+local DYNAHUD_DYNAMIC_MINIMAP_SHOW = false
+local DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE_TIMEOUT = 5 * 1000
+local DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED = true
+local DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_ACTOR_SPRINT = false
+local DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT = 1000
+local DYNAHUD_DYNAMIC_MINIMAP_HIDE_ON_END_SPRINT_TIMEOUT = 1.5
+local DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT = 5 * 1000
+local DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_FORCE = false
+local DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD = false
+local DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE = false
+local DYNAHUD_NOTIFICATIONS = false
+local DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE = false
+local DYNAHUD_DYNAMIC_MAGHUD_SHOW_RELOAD = false
+local DYNAHUD_DYNAMIC_MAGHUD_SHOW_AMMOCHECK = false
+local DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE_TIMEOUT = false
+local DYNAHUD_COMPANION_HUD_AUTOHIDE = true
+local DYNAHUD_COMPANION_CHECK_DISTANCE = true
+local DYNAHUD_COMPANION_SAFE_DISTANCE = 100
+local DYNAHUD_COMPANION_HUD_PREVIEW_TIME = 5000
+local DYNAHUD_WEAPON_HUD_AUTOHIDE = false
+local DYNAHUD_DYNAMIC_WEAPON_HUD_AUTOHIDE_TIMEOUT = 5000
+local DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW = false
+local DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW_QUICKHIDE = false
+local DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW = false
+local DYNAHUD_DYNAMIC_WEAPON_HUD_WEAPONCHECK_SHOW = false
+local DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE = false
+local DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD = 600
+local DYNAHUD_DYNAMIC_COLD_SYSTEM_CRITICAL_THRESHOLD = 1800
+local DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT = 100
+local DYNAHUD_DYNAMIC_COLD_SYSTEM_SHOW_RECOVERY = false
+local cold_val_next_breakpoint = 0
+local DYNAHUD_DYNAMIC_COLD_SYSTEM_HUD_KEYBIND = 0
+
+DYNAHUD_ICONS_HUD_TIMERS = false
+DYNAHUD_ICONS_HUD_TIMERS_EXPIRING = 60
+DYNAHUD_ICONS_HUD_TIMERS_PREVIEW_TIME_ON_REFRESH = 10
+DYNAHUD_DYNAMIC_MAGHUD_WEAPON_CHECK = false
+
+------------------------ DYNA HUD MAIN ------------------------
+local DYNAHUD_MAGREDUX_SUPPORT = nil
+local DYNAHUD_BHS_SUPPORT = nil
+local DYNAHUD_COLD_SYSTEM_SUPPORT = nil
+local minimap_while_weapon_equipped = nil
+local last_weapon_equipped = nil
+local companion_hud_visible = true
+local weapon_is_lowered = nil
+
+------------------------- BHS PATCH AWARENESS ----------------------
+-- 0 BHS | 1 BHS_GAMMA - | 2 BSH_EFP4
+patch_type = nil
+-- Minimap Style Binding
+-- the choosen minimap/compass script will bind its stlye into this variable
+-- 0 bottom right - 1 top right - 2 top left - 3 compass top - 4 compass bottom
+MINIMAP = nil
+-- HUD Style Binding
+-- INHERIT | -4 Aydin | -3 BHS | -2 EFP | -1 GAMMA  | ======= | MAIN | 0 S2 | 1 minimalistic | 2 minimalistic no ammo counter
+HUD = nil
+
+ACTION = { IDLE = 0, RELOAD = 1, UNJAMMING = 2, AMMO_CHECK = 3 }
+local player_action = ACTION.IDLE
+
+local function dynahud_load_mcm_settings()
+	-- Dynamic Main Hud
+	DYNAHUD_MAIN_HUD_AUTOHIDE = dynahud_mcm.get_config("main_hud/autohide") -- boolean
+	DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD = (dynahud_mcm.get_config("main_hud/hide_health_threshold")) * 1
+	DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT = (dynahud_mcm.get_config("main_hud/hide_health_autohide_timeout")) *
+		1000
+	DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD = (dynahud_mcm.get_config("main_hud/hide_power_threshold")) * 1
+	DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD = (dynahud_mcm.get_config("main_hud/hide_psy_threshold")) * 1
+	DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT = (dynahud_mcm.get_config("main_hud/bg_autohide_timeout")) * 1000
+	DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW = dynahud_mcm.get_config("main_hud/bg_preview_on_show")
+	DYNAHUD_MAIN_HUD_PREVIEW_TIME = dynahud_mcm.get_config("main_hud/bg_preview_time") * 1000
+	-- Dynamic Icons Hud
+	DYNAHUD_ICONS_HUD_AUTOHIDE = dynahud_mcm.get_config("icons_hud/autohide") -- boolean
+	DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT = (dynahud_mcm.get_config("icons_hud/autohide_timeout")) * 1000
+	DYNAHUD_ICONS_HUD_PREVIEW = dynahud_mcm.get_config("icons_hud/preview") -- boolean
+	DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER = (dynahud_mcm.get_config("icons_hud/preview_timer")) * 1000
+	DYNAHUD_ICONS_HUD_PREVIEW_TIME = (dynahud_mcm.get_config("icons_hud/preview_time")) * 1000
+	DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW = dynahud_mcm.get_config("icons_hud/inventory_preview") -- boolean
+	DYNAHUD_ICONS_HUD_TIMERS = dynahud_mcm.get_config("icons_hud/enable_timers") and
+		actor_status
+		.XCVB_ICON_TIME_IMPL -- boolean
+	DYNAHUD_ICONS_HUD_TIMERS_EXPIRING = (dynahud_mcm.get_config("icons_hud/show_only_expiring")) * 1
+	-- Dynamic Weapon Hud
+	DYNAHUD_WEAPON_HUD_AUTOHIDE = dynahud_mcm.get_config("weapon_hud/autohide")
+	DYNAHUD_DYNAMIC_WEAPON_HUD_AUTOHIDE_TIMEOUT = (dynahud_mcm.get_config("weapon_hud/autohide_timeout")) * 1000
+	DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW = dynahud_mcm.get_config("weapon_hud/aim_show")
+	DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW_QUICKHIDE = dynahud_mcm.get_config("weapon_hud/aim_show_quickhide")
+	DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW = dynahud_mcm.get_config("weapon_hud/reload_show")
+	DYNAHUD_DYNAMIC_WEAPON_HUD_WEAPONCHECK_SHOW = dynahud_mcm.get_config("weapon_hud/weaponcheck_show")
+	-- Dynamic BHS Hud
+	DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE = dynahud_mcm.get_config("bhs_hud/autohide") -- boolean
+	DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT = (dynahud_mcm.get_config("bhs_hud/update_hide_timeout")) * 1000
+	DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT = (dynahud_mcm.get_config("bhs_hud/dismiss_timeout")) * 60000
+	DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_FORCE = dynahud_mcm.get_config("bhs_hud/dismiss_force") -- boolean
+	DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD = dynahud_mcm.get_config("bhs_hud/dismiss_on_mapload")
+	DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE = dynahud_mcm.get_config("bhs_hud/always_hide")
+	-- Dynamic minimap
+	DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE = dynahud_mcm.get_config("minimap/autohide")
+	DYNAHUD_DYNAMIC_MINIMAP_HIDE = dynahud_mcm.get_config("minimap/hide")
+	DYNAHUD_DYNAMIC_MINIMAP_SHOW = dynahud_mcm.get_config("minimap/show")
+	DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE_TIMEOUT = (dynahud_mcm.get_config("minimap/autohide_timeout")) * 1000
+	DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED = dynahud_mcm.get_config("minimap/show_on_wpn_lowered")
+	DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_ACTOR_SPRINT = dynahud_mcm.get_config("minimap/show_on_actor_sprint")
+	DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT = (dynahud_mcm.get_config("minimap/show_on_wpn_lowered_timeout")) *
+		1000
+	DYNAHUD_DYNAMIC_MINIMAP_HIDE_ON_END_SPRINT_TIMEOUT = (dynahud_mcm.get_config("minimap/hide_on_end_sprint_timeout"))
+	-- Notifications
+	DYNAHUD_NOTIFICATIONS = dynahud_mcm.get_config("general/notifications_enable")
+	-- Dynamic Magazine Hud
+	DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE = dynahud_mcm.get_config("mags/enable")
+	DYNAHUD_DYNAMIC_MAGHUD_SHOW_RELOAD = dynahud_mcm.get_config("mags/show_reload")
+	DYNAHUD_DYNAMIC_MAGHUD_SHOW_AMMOCHECK = dynahud_mcm.get_config("mags/show_ammocheck")
+	DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE_TIMEOUT = (dynahud_mcm.get_config("mags/autohide_timeout"))
+	DYNAHUD_DYNAMIC_MAGHUD_WEAPON_CHECK = dynahud_mcm.get_config("mags/weapon_check")
+	-- Cold System Hud
+	DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE = dynahud_mcm.get_config("cold_system/enable") -- boolean
+	DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD = (dynahud_mcm.get_config("cold_system/safe_threshold")) * 1
+	DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT = (dynahud_mcm.get_config("cold_system/breakpoint")) * 1
+	DYNAHUD_DYNAMIC_COLD_SYSTEM_SHOW_RECOVERY = dynahud_mcm.get_config("cold_system/show_recovery") -- boolean
+	DYNAHUD_DYNAMIC_COLD_SYSTEM_CRITICAL_THRESHOLD = dynahud_mcm.get_config("cold_system/critical_threshold") * 1
+	-- Companion Hud
+	DYNAHUD_COMPANION_HUD_AUTOHIDE = dynahud_mcm.get_config("companion_hud/enable")        -- boolean
+	DYNAHUD_COMPANION_CHECK_DISTANCE = dynahud_mcm.get_config("companion_hud/check_distance") -- boolean
+	DYNAHUD_COMPANION_SAFE_DISTANCE = dynahud_mcm.get_config("companion_hud/safe_distance") * 1
+	DYNAHUD_COMPANION_HUD_PREVIEW_TIME = dynahud_mcm.get_config("companion_hud/preview_time") * 1000
+end
+
+local function dynahud_mcm_print_config()
+	printf("___________________________DYNAHUD MCM CONFIG__________________________")
+	printf("DYNAHUD_MAIN_HUD_AUTOHIDE %s", DYNAHUD_MAIN_HUD_AUTOHIDE)
+	printf("DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE %s", DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE)
+	printf("DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT %s", DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT)
+	printf("DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD %s", DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD)
+	printf("DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD %s", DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD)
+	printf("DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD %s", DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD)
+	printf("DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT %s", DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT)
+	printf("DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT %s", DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT)
+	printf("DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW %s", DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW)
+	printf("DYNAHUD_MAIN_HUD_PREVIEW_TIMER %s", DYNAHUD_MAIN_HUD_PREVIEW_TIME)
+	printf("DYNAHUD_ICONS_HUD_AUTOHIDE %s", DYNAHUD_ICONS_HUD_AUTOHIDE)
+	printf("DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT %s", DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT)
+	printf("DYNAHUD_ICONS_HUD_PREVIEW %s", DYNAHUD_ICONS_HUD_PREVIEW)
+	printf("DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER %s", DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER)
+	printf("DYNAHUD_ICONS_HUD_PREVIEW_TIME %s", DYNAHUD_ICONS_HUD_PREVIEW_TIME)
+	printf("DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW %s", DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW)
+	printf("DYNAHUD_ICONS_HUD_TIMERS %s", DYNAHUD_ICONS_HUD_TIMERS)
+	printf("DYNAHUD_ICONS_HUD_TIMERS_EXPIRING %s", DYNAHUD_ICONS_HUD_TIMERS_EXPIRING)
+	printf("DYNAHUD_WEAPON_HUD_AUTOHIDE %s", DYNAHUD_WEAPON_HUD_AUTOHIDE)
+	printf("DYNAHUD_DYNAMIC_WEAPON_HUD_AUTOHIDE_TIMEOUT %s", DYNAHUD_DYNAMIC_WEAPON_HUD_AUTOHIDE_TIMEOUT)
+	printf("DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW %s", DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW)
+	printf("DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW_QUICKHIDE %s", DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW_QUICKHIDE)
+	printf("DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW %s", DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW)
+	printf("DYNAHUD_DYNAMIC_WEAPON_HUD_WEAPONCHECK_SHOW %s", DYNAHUD_DYNAMIC_WEAPON_HUD_WEAPONCHECK_SHOW)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE %s", DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_HIDE %s", DYNAHUD_DYNAMIC_MINIMAP_HIDE)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_SHOW %s", DYNAHUD_DYNAMIC_MINIMAP_SHOW)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE_TIMEOUT %s", DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE_TIMEOUT)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED %s", DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_ACTOR_SPRINT %s", DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_ACTOR_SPRINT)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT %s", DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT)
+	printf("DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT %s", DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT)
+	printf("DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT %s", DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT)
+	printf("DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_FORCE %s", DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_FORCE)
+	printf("DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD %s", DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD)
+	printf("DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE %s", DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE)
+	printf("DYNAHUD_DYNAMIC_MAGHUD_WEAPON_CHECK %s", DYNAHUD_DYNAMIC_MAGHUD_WEAPON_CHECK)
+	printf("DYNAHUD_NOTIFICATIONS %s", DYNAHUD_NOTIFICATIONS)
+	printf("DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE %s", DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE)
+	printf("DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD %s", DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD)
+	printf("DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT %s", DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT)
+	printf("DYNAHUD_DYNAMIC_COLD_SYSTEM_SHOW_RECOVERY %s", DYNAHUD_DYNAMIC_COLD_SYSTEM_SHOW_RECOVERY)
+	printf("DYNAHUD_DYNAMIC_COLD_SYSTEM_CRITICAL_THRESHOLD %s", DYNAHUD_DYNAMIC_COLD_SYSTEM_CRITICAL_THRESHOLD)
+	printf("DYNAHUD_COMPANION_HUD_AUTOHIDE %s", DYNAHUD_COMPANION_HUD_AUTOHIDE)
+	printf("DYNAHUD_COMPANION_CHECK_DISTANCE %s", DYNAHUD_COMPANION_CHECK_DISTANCE)
+	printf("DYNAHUD_COMPANION_SAFE_DISTANCE %s", DYNAHUD_COMPANION_SAFE_DISTANCE)
+	printf("DYNAHUD_COMPANION_HUD_PREVIEW_TIME %s", DYNAHUD_COMPANION_HUD_PREVIEW_TIME)
+	printf("________________________________________________________________________")
+end
+
+local function dynahud_initialize_hud_style()
+	zzz_dynahud_hud.init_hud_style()
+	HUD = zzz_dynahud_hud.HUD
+end
+
+local function dynahud_restore_hud_style()
+	zzz_dynahud_hud.destroy_init_style()
+	HUD = nil
+end
+
+local compass_initialized = false
+local function compass_waypoint_init()
+	local maingameui = ActorMenu.get_maingame()
+	if (maingameui and maingameui.UIZoneMap) then
+		local m_background = maingameui.UIZoneMap:Background()
+		local b = m_background:GetWndPos();
+		b.y = b.y + 100
+		m_background:SetWndPos(vector2():set(b.x, b.y));
+		compass_initialized = true
+	end
+end
+
+local function compass_waypoint_restore()
+	local maingameui = ActorMenu.get_maingame()
+	if (maingameui and maingameui.UIZoneMap) then
+		local m_background = maingameui.UIZoneMap:Background()
+		local b = m_background:GetWndPos();
+		b.y = b.y - 100
+		m_background:SetWndPos(vector2():set(b.x, b.y));
+		compass_initialized = true
+	end
+end
+
+local function dynahud_map_initialize()
+	if dynahud_minimap_binder.MINIMAP == nil then
+		printf("[dynahud] Error: Minimap not bound")
+	end
+
+	MINIMAP = dynahud_minimap_binder.MINIMAP
+
+	if MINIMAP.style == 5 and not compass_initialized then compass_waypoint_init() end
+
+	local itm = db.actor:active_item()
+	local is_weapon = itm and IsWeapon(itm) or false
+
+	if is_weapon then
+		last_weapon_equipped = itm
+		weapon_is_equipped = true
+		minimap_while_weapon_equipped = ui_options.get("video/hud/show_minimap")
+		-- if DYNAHUD_WEAPON_HUD_AUTOHIDE then
+		update_shooting_tg()
+		-- end
+		weapon_is_lowered = game.actor_weapon_lowered()
+	else
+		weapon_is_equipped = false
+	end
+
+	last_time_unequipped = time_global()
+
+	--print_tip("ui_mcm_dynahud_dynamic_minimap_enabled")
+end
+
+-- called by dynahud_mcm
+function dynahud_on_mcm_change()
+	printf("[dynahud] MCM settings was updated")
+	-- remember old settings
+	local old_MAIN_HUD_AUTOHIDE = DYNAHUD_MAIN_HUD_AUTOHIDE
+	local old_DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE = DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE
+	local old_DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE = DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE
+
+	-- reset player state
+	last_time_health_change = time_global()
+
+	-- load new settings
+	dynahud_load_mcm_settings()
+
+	-- Dynamic Main Hud change and notify
+	if not DYNAHUD_MAIN_HUD_AUTOHIDE then
+		if (old_MAIN_HUD_AUTOHIDE ~= DYNAHUD_MAIN_HUD_AUTOHIDE) then
+			print_tip("ui_mcm_dynahud_dynamic_main_hud_disabled", 1000)
+		end
+		local maingameui = ActorMenu.get_maingame()
+		maingameui.m_ui_hud_states.m_ui_psy_bar_show = true
+		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = true
+		maingameui.m_ui_hud_states.m_ui_health_bar_show = true
+	else
+		if (old_MAIN_HUD_AUTOHIDE ~= DYNAHUD_MAIN_HUD_AUTOHIDE) then
+			print_tip("ui_mcm_dynahud_dynamic_main_hud_enabled",
+				1000)
+		end
+	end
+
+	-- Dynamic BHS Hud change and notify if support is enabled
+	if DYNAHUD_BHS_SUPPORT then
+		if not DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
+			if (old_DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE ~= DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE) then
+				disable_bhs_hud()
+			end
+			if zzz_player_injuries.show_hud_type == 0 then
+				zzz_player_injuries.show_hud_type = 1
+				zzz_player_injuries.show_hud_change_time = time_global()
+			elseif zzz_player_injuries.show_hud_type == 1 then
+				zzz_player_injuries.show_hud_type = 2
+				zzz_player_injuries.show_hud_change_time = time_global()
+			elseif zzz_player_injuries.show_hud_type == 2 then
+				zzz_player_injuries.show_hud_type = 0
+				zzz_player_injuries.show_hud_change_time = time_global()
+			end
+		else
+			if (old_DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE ~= DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE) then
+				enable_bhs_hud()
+			end
+		end
+		if DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD then
+			create_dismiss_bhs_event()
+		end
+	end
+	-- Dynamic minimap change and notify
+	if (old_DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE ~= DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE) then
+		if DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE then
+			print_tip("ui_mcm_dynahud_dynamic_minimap_enabled", 1000)
+		else
+			print_tip("ui_mcm_dynahud_dynamic_minimap_disabled", 1000)
+			local minimap_enabled = ui_options.get("video/hud/show_minimap")
+			show_minimap(minimap_enabled)
+		end
+	end
+
+	dynahud_map_initialize()
+
+	dynahud_mcm_print_config()
+	-- Dynamic Magazines Hud
+	--dynahud_initialize_hud_style()
+
+	if DYNAHUD_COLD_SYSTEM_SUPPORT then
+		if DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE then
+			dynamic_cold_system_init()
+		end
+	end
+
+	init_companion_hud()
+end
+
+local function dynahud_initialize()
+	dynahud_load_mcm_settings()
+	dynahud_mcm_print_config()
+
+	-- main hud initialization
+	if not DYNAHUD_MAIN_HUD_AUTOHIDE then
+		print_tip("ui_mcm_dynahud_dynamic_main_hud_disabled")
+	else
+		print_tip("ui_mcm_dynahud_dynamic_main_hud_enabled")
+	end
+
+	dynahud_initialize_hud_style()
+
+	-- initialize minimap
+	if DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE then
+		print_tip("ui_mcm_dynahud_dynamic_minimap_enabled")
+	else
+		print_tip("ui_mcm_dynahud_dynamic_minimap_disabled")
+		local minimap_enabled = ui_options.get("video/hud/show_minimap")
+		show_minimap(minimap_enabled)
+	end
+	dynahud_map_initialize()
+
+	-- initialize BHS if support elabled
+	if DYNAHUD_BHS_SUPPORT then
+		if not DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
+			disable_bhs_hud()
+		else
+			enable_bhs_hud()
+		end
+		last_time_health_change = time_global()
+		last_time_dyn_bhs_updated = last_time_health_change
+		inventory_opened = false
+		limbs_fully_healed = check_limbs_fully_healed()
+		bhs_change_state = false
+		previous_limbs_total_injury = 0
+		bhs_hud_dismissed = false
+		time_bhs_hud_dismissed = time_global()
+		--zzz_player_injuries.HUDUpdate()
+		if DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD then
+			create_dismiss_bhs_event()
+		end
+	end
+
+	if DYNAHUD_COLD_SYSTEM_SUPPORT then
+		if DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE then
+			dynamic_cold_system_init()
+		end
+	end
+
+	init_companion_hud()
+end
+
+local function dynahud_on_destroy()
+	printf("[dynahud] dynahud_on_destroy")
+	if MINIMAP.style == 5 then compass_waypoint_restore() end
+	dynahud_restore_hud_style()
+end
+
+local function dynahud_actor_on_first_update()
+	dynahud_initialize()
+end
+
+function initialize_plugins_support()
+	-- UI mods plugins support
+
+	DYNAHUD_BHS_SUPPORT = false
+	if zzz_player_injuries and zzz_player_injuries_mcm then
+		printf("Enabling DYNAHUD_BHS_SUPPORT")
+		DYNAHUD_BHS_SUPPORT = true
+	else
+		printf("DYNAHUD_BHS_SUPPORT not Enabled")
+	end
+	DYNAHUD_MAGREDUX_SUPPORT = false
+	if magazines then
+		printf("Enabling DYNAHUD_MAGREDUX_SUPPORT")
+		DYNAHUD_MAGREDUX_SUPPORT = true
+		ui_mcm.set("magazines/hud/show_hud", false)
+	else
+		printf("DYNAHUD_MAGREDUX_SUPPORT not Enabled")
+	end
+
+	if cold_system then
+		DYNAHUD_COLD_SYSTEM_SUPPORT = true
+	end
+end
+
+local main_hud_tg_update = 0
+local main_hud_tg_update_step = 500 --[ms]
+
+function dynahud_main_hud_controller()
+	if USE_UPDATE_STEP then
+		local tg = time_global()
+		if tg < main_hud_tg_update then
+			return
+		end
+		main_hud_tg_update = tg + main_hud_tg_update_step
+	end
+
+	dynahud_main_hud_update()
+end
+
+local bhs_hud_tg_update = 0
+local bhs_hud_tg_update_step = 1000 --[ms]
+
+function dynahud_bhs_hud_controller()
+	if USE_UPDATE_STEP then
+		local tg = time_global()
+		if tg < bhs_hud_tg_update then
+			return
+		end
+		bhs_hud_tg_update = tg + bhs_hud_tg_update_step
+	end
+
+	if DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
+		if dynahud_dynamic_bhs_hud_on then
+			dynahud_dynamic_bhs_hud_update()
+			if bhs_hud_dismissed then
+				dynahud_bhs_hud_dismiss_update()
+			end
+		end
+	end
+end
+
+local mag_hud_tg_update = 0
+local mag_hud_tg_update_step = 100 --[ms]
+
+function dynahud_mag_hud_controller()
+	local tg = time_global()
+	if tg < mag_hud_tg_update then
+		return
+	end
+	mag_hud_tg_update = tg + mag_hud_tg_update_step
+
+	if DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE then
+		-- releoad
+		if DYNAHUD_DYNAMIC_MAGHUD_SHOW_RELOAD then
+			local itm = db.actor:active_item()
+			local is_weapon = itm and IsWeapon(itm) or false
+			local is_suppoorted_weapon = magazines.is_supported_weapon(itm)
+			local state = itm and itm:get_state()
+
+			if is_weapon and is_suppoorted_weapon and state == 7 and not reloading_started then
+				reloading_started = true
+				dynahud_mags_ui_update(ACTION.RELOAD)
+			elseif is_weapon and state == 0 and reloading_started then
+				reloading_started = false
+			end
+		end
+	end
+end
+
+-- Status Value Functions
+
+function get_actor_health()
+	return db.actor.health
+end
+
+function get_actor_power()
+	return db.actor.power
+end
+
+function get_actor_psy_health()
+	if arszi_psy.get_psy_health then
+		return arszi_psy.get_psy_health()
+	end
+
+	return db.actor.psy_health
+end
+
+function get_actor_rads()
+	return db.actor.radiation
+end
+
+function is_actor_hurting_or_healing()
+	local health_delta = myhealth - get_actor_health()
+
+	if health_delta > 0.0001 or health_delta < -0.0001 then
+		return true
+	end
+
+	return false
+end
+
+function is_actor_sprinting()
+	return IsMoveState("mcSprint")
+end
+
+function actor_lowers_the_weapon()
+	if actor_sprinting_wpn_lower_token then
+		-- printf("consuming actor_sprinting_wpn_lower_token")
+		actor_sprinting_wpn_lower_token = false
+		weapon_is_lowered = true
+		return false
+	end
+
+	if game.actor_weapon_lowered() and not weapon_is_lowered then
+		-- printf("weapon lowered")
+		weapon_is_lowered = true
+		return true
+	end
+
+	return false
+end
+
+function actor_raise_the_weapon()
+	if actor_sprinting_wpn_raise_token then
+		-- printf("consuming actor_sprinting_wpn_raise_token")
+		actor_sprinting_wpn_raise_token = false
+		weapon_is_lowered = false
+		return false
+	end
+
+	if weapon_is_lowered and not game.actor_weapon_lowered() then
+		-- printf("weapon raised")
+		weapon_is_lowered = false
+		return true
+	end
+
+	return false
+end
+
+local minimap_tg_update = 0
+local minimap_tg_update_step = 10 --[ms]
+local started_sprint_time = 0
+local time_since_sprinting = 0
+
+function dynahud_minimap_controller()
+	local tg = time_global()
+	if tg < minimap_tg_update then
+		return
+	end
+	minimap_tg_update = tg + minimap_tg_update_step
+
+	--printf("last_weapon_equipped Id: %s", last_weapon_equipped)
+	if last_weapon_equipped and not level.object_by_id(last_weapon_equipped) then
+		--printf("[dynahud] last_weapon_equipped was destroyed ")
+		last_weapon_equipped = nil
+	end
+
+	local itm = db.actor:active_item()
+	local slot = db.actor:active_slot()
+
+	local det_active = db.actor:active_detector()
+	local is_weapon = itm and IsWeapon(itm) or false
+	local is_pda = itm and slot == 8 or slot == 14 or false
+	if is_weapon and not is_pda and not det_active then
+		if last_weapon_equipped == nil then last_weapon_equipped = itm:id() end
+
+		if DYNAHUD_WEAPON_HUD_AUTOHIDE and last_weapon_equipped ~= itm:id() then
+			last_weapon_equipped = itm:id()
+			-- printf("weapon changed")
+			update_shooting_tg()
+		end
+		if not weapon_is_equipped then
+			-- transition to equipping a weapon
+			if DYNAHUD_WEAPON_HUD_AUTOHIDE and player_action ~= ACTION.AMMO_CHECK then
+				-- printf("weapon equipped")
+				update_shooting_tg()
+			end
+			if DYNAHUD_DYNAMIC_MINIMAP_HIDE then
+				-- printf("[dynahud] minimap controller hiding minimap")
+				if player_action ~= ACTION.AMMO_CHECK then
+					show_minimap(false)
+				elseif MINIMAP.style == 0 then
+					show_minimap(false)
+				end
+			end
+			weapon_is_equipped = not weapon_is_equipped
+		end
+
+		if DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED or DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_ACTOR_SPRINT then
+			if is_actor_sprinting() then
+				if started_sprint_time == 0 then
+					started_sprint_time = time_global()
+				end
+				-- printf("sprinting with weapon lowered")
+				if DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_ACTOR_SPRINT then
+					time_since_sprinting = time_global() - started_sprint_time
+					local minimap_enabled = ui_options.get("video/hud/show_minimap")
+					if time_since_sprinting > DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED_TIMEOUT and not minimap_enabled then
+						-- printf("show on actor sprint --> showing minimap")
+						show_minimap(true)
+						weapon_is_lowered = true
+						actor_sprinting_wpn_lower_token = true
+					end
+				else
+					weapon_is_lowered = true
+					actor_sprinting_wpn_raise_token = true
+					actor_sprinting_wpn_lower_token = true
+				end
+			else
+				local minimap_enabled = ui_options.get("video/hud/show_minimap")
+				if time_since_sprinting > 0 and not minimap_enabled then
+					-- printf("not enough time sprinting to show the minimap")
+					weapon_is_lowered = true
+					actor_sprinting_wpn_raise_token = true
+					actor_sprinting_wpn_lower_token = true
+					time_since_sprinting = 0
+				end
+				started_sprint_time = 0
+
+				if actor_lowers_the_weapon() then
+					-- printf("actor_lowered_the_weapon --> showing minimap")
+					local minimap_enabled = ui_options.get("video/hud/show_minimap")
+					if not minimap_enabled then
+						if DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED then show_minimap(true) end
+					else
+						if DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED then
+							-- printf("Try to RemoveTimeEvent")
+							RemoveTimeEvent("dynahud_minimap", "delayed_hide")
+						end
+					end
+				end
+
+				if actor_raise_the_weapon() then
+					-- printf("actor_raised_the_weapon --> hiding minimap")
+					local minimap_enabled = ui_options.get("video/hud/show_minimap")
+					if minimap_enabled then
+						if time_since_sprinting > 0 then
+							-- printf("CreateTimeEvent dynahud_minimap:delayed_hide")
+							CreateTimeEvent("dynahud_minimap", "delayed_hide",
+								DYNAHUD_DYNAMIC_MINIMAP_HIDE_ON_END_SPRINT_TIMEOUT, function()
+									-- printf("Consuming Event dynahud_minimap:delayed_hide")
+									show_minimap(false)
+									return true
+								end)
+							time_since_sprinting = 0
+						else
+							if DYNAHUD_DYNAMIC_MINIMAP_SHOW_ON_WPN_LOWERED then show_minimap(false) end
+						end
+					end
+				end
+			end
+		end
+	elseif weapon_is_equipped then
+		-- printf("weapon_is_equipped -> generating dynamic_minimap_autoshow_token ")
+		weapon_is_equipped = not weapon_is_equipped
+		last_time_unequipped = time_global()
+		dynamic_minimap_autoshow_token = true
+	end
+
+	local time_since_unequipped = time_global() - last_time_unequipped
+
+	if not weapon_is_equipped and dynamic_minimap_autoshow_token and time_since_unequipped > DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE_TIMEOUT then
+		-- printf("consuming dynamic_minimap_autoshow_token")
+		if DYNAHUD_DYNAMIC_MINIMAP_SHOW then
+			show_minimap(true)
+		end
+		dynamic_minimap_autoshow_token = false
+	end
+end
+
+local function dynahud_actor_on_update()
+	-- the main hud
+	if DYNAHUD_MAIN_HUD_AUTOHIDE then
+		dynahud_main_hud_controller()
+	end
+
+	-- the minimap hud
+	if DYNAHUD_DYNAMIC_MINIMAP_AUTOHIDE then
+		dynahud_minimap_controller()
+	end
+
+	-- the bhs hud if mod is available
+	if DYNAHUD_BHS_SUPPORT then
+		dynahud_bhs_hud_controller()
+	end
+
+	-- the mag hud if mod is available
+	if DYNAHUD_MAGREDUX_SUPPORT then
+		dynahud_mag_hud_controller()
+	end
+
+	if DYNAHUD_WEAPON_HUD_AUTOHIDE then
+		dynahud_weapon_hud_controller()
+	end
+
+	if DYNAHUD_ICONS_HUD_AUTOHIDE then
+		status_icons_controller()
+	end
+
+	if DYNAHUD_COLD_SYSTEM_SUPPORT then
+		cold_system_controller()
+	end
+
+	if DYNAHUD_COMPANION_HUD_AUTOHIDE then
+		update_companion_hud()
+	end
+end
+
+
+
+----------------------- Utility  ------------------------------------------------------
+
+function ui_show_cur_ammo(show)
+	local pos = ActorMenu.get_maingame().m_ui_hud_states.m_ui_weapon_cur_ammo:GetWndPos()
+	pos.x = ((not show and pos.x > 0) or (show and pos.x < 0)) and (-1 * pos.x) or pos.x
+	ActorMenu.get_maingame().m_ui_hud_states.m_ui_weapon_cur_ammo:SetWndPos(pos)
+end
+
+function ui_show_weapon_icon(show)
+	pos = ActorMenu.get_maingame().m_ui_hud_states.m_ui_weapon_icon:GetWndPos()
+	pos.x = ((not show and pos.x > 0) or (show and pos.x < 0)) and (-1 * pos.x) or pos.x
+	ActorMenu.get_maingame().m_ui_hud_states.m_ui_weapon_icon:SetWndPos(pos)
+end
+
+function show_minimap(show)
+	-- printf("[dynahud] show minimap %s", show)
+	-- minimap_enabled = ui_options.get("video/hud/show_minimap")
+	-- ui_options.set("video/hud/show_minimap", not minimap_enabled )
+	printf("RemoveTimeEvent in show_minimap")
+	RemoveTimeEvent("dynahud_minimap", "delayed_hide")
+	local maingameui = ActorMenu.get_maingame()
+
+	if (maingameui and maingameui.UIZoneMap) then
+		maingameui.UIZoneMap.disabled = not show
+		maingameui.UIMotionIcon:Show(maingameui.UIZoneMap.disabled == false)
+		ui_options.set("video/hud/show_minimap", show)
+	end
+end
+
+print_tip = print_tip or function(text, delay, ...)
+	if DYNAHUD_NOTIFICATIONS then
+		local text = tostring(text)
+		printf(text, ...)
+		if not db.actor then
+			return
+		end
+
+		local ico = "ui_inGame2_Dengi_otdani"
+		local text_color = utils_xml.get_color("pda_white")
+		local arg_color = utils_xml.get_color("d_green")
+		local function colorize(s)
+			return arg_color .. s .. text_color
+		end
+		local i = 0
+		local t = { ... }
+		if #t > 0 then
+			local function sr(a)
+				i = i + 1
+				if (type(t[i]) == 'userdata') then
+					if (t[i].x and t[i].y) then
+						return colorize(vec_to_str(t[i]))
+					end
+					return colorize('userdata')
+				end
+				return colorize(tostring(t[i]))
+			end
+			text = string.gsub(game.translate_string(text), "%%s", sr)
+		else
+			text = game.translate_string(text)
+		end
+		text = text_color .. text
+		if delay == nil then
+			delay = 6000
+		end
+		news_manager.send_tip(db.actor, text, nil, ico, delay)
+	end
+end
+
+----------------------- WEAPON HUD SUPPORT ---------------------------------------------
+
+local last_time_fired = -1
+local time_since_nofiring = -1
+local stop_autohide_ammo_hud = false
+
+function update_shooting_tg()
+	-- EFP HUD never shows weapon hud
+	if HUD.style == -2 then return end
+
+	last_time_fired = time_global()
+	time_since_nofiring = 0
+	show_ammo_hud()
+end
+
+function show_ammo_hud()
+	ui_show_cur_ammo(true)
+	ui_show_weapon_icon(true)
+	if ui_bartgac_mcm then ui_bartgac_mcm.BGAC_ON() end
+	show_firemode_gui(true)
+	weapon_hud_visible = true
+end
+
+local function autohide_ammo_hud()
+	time_since_nofiring = time_global() - last_time_fired
+	if time_since_nofiring > DYNAHUD_DYNAMIC_WEAPON_HUD_AUTOHIDE_TIMEOUT then
+		hide_ammo_hud()
+	end
+end
+
+function hide_ammo_hud()
+	ui_show_cur_ammo(false)
+	ui_show_weapon_icon(false)
+	if ui_bartgac_mcm then ui_bartgac_mcm.BGAC_OFF() end
+	show_firemode_gui(false)
+	weapon_hud_visible = false
+end
+
+local function enter_weapon_aiming()
+	--printf("enter_weapon_aiming")
+	if DYNAHUD_WEAPON_HUD_AUTOHIDE and DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW then
+		update_shooting_tg()
+	end
+end
+
+
+function exit_weapon_aiming()
+	--printf("exit_weapon_aiming")
+	if DYNAHUD_WEAPON_HUD_AUTOHIDE and DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW and DYNAHUD_DYNAMIC_WEAPON_HUD_AIM_SHOW_QUICKHIDE then
+		hide_ammo_hud()
+	end
+end
+
+function weapon_hud_update(action)
+	player_action = action
+	if player_action == ACTION.RELOAD and DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW then
+		update_shooting_tg()
+	elseif player_action == ACTION.AMMO_CHECK and DYNAHUD_DYNAMIC_WEAPON_HUD_WEAPONCHECK_SHOW then
+		update_shooting_tg()
+	end
+end
+
+local function dynahud_weapon_hud_update()
+	if not DYNAHUD_MAGREDUX_SUPPORT then
+		-- releoad
+		if DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW then
+			local itm = db.actor:active_item()
+			local is_weapon = itm and IsWeapon(itm) or false
+			local state = itm and itm:get_state()
+			if is_weapon and state == 7 and not reloading_started then
+				reloading_started = true
+				weapon_hud_update(ACTION.RELOAD)
+			elseif is_weapon and state == 0 and reloading_started then
+				reloading_started = false
+			end
+		end
+	end
+
+	if DYNAHUD_WEAPON_HUD_AUTOHIDE and not stop_autohide_ammo_hud and weapon_hud_visible then
+		autohide_ammo_hud()
+	end
+end
+
+local weapon_hud_tg_update = 0
+local weapon_hud_tg_update_step = 100 --[ms]
+function dynahud_weapon_hud_controller()
+	local tg = time_global()
+	if tg < weapon_hud_tg_update then
+		return
+	end
+	weapon_hud_tg_update = tg + weapon_hud_tg_update_step
+
+	dynahud_weapon_hud_update()
+end
+
+function show_firemode_gui(show)
+	pos = ActorMenu.get_maingame().m_ui_hud_states.m_fire_mode:GetWndPos()
+	pos.x = ((not show and pos.x > 0) or (show and pos.x < 0)) and (-1 * pos.x) or pos.x -- Raven, no!
+	ActorMenu.get_maingame().m_ui_hud_states.m_fire_mode:SetWndPos(pos)
+end
+
+----------------------- MAIN HUD SUPPORT ---------------------------------------------
+
+function dynahud_autohide_main_hud()
+	local maingameui = ActorMenu.get_maingame()
+
+	-- Health autohide will only kick in if health above of a threshold and after a certain timeout since being stable
+	if db.actor.health > DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD then
+		local time_since_last_damage = time_global() - last_time_health_change
+		if (time_since_last_damage > DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT) then
+			maingameui.m_ui_hud_states.m_ui_health_bar_show = false
+		end
+	else
+		maingameui.m_ui_hud_states.m_ui_health_bar_show = true
+	end
+end
+
+function check_all_mainhud_bars_are_hidden()
+	local maingameui = ActorMenu.get_maingame()
+	--printf("m_ui_psy_bar_show %s", maingameui.m_ui_hud_states.m_ui_psy_bar_show)
+	--printf("m_ui_stamina_bar_show %s", maingameui.m_ui_hud_states.m_ui_stamina_bar_show)
+	--printf("m_ui_health_bar_show %s", maingameui.m_ui_hud_states.m_ui_health_bar_show)
+
+	local ui_radbar_show = false
+
+	if rad_hud_enabled and get_actor_rads() > 0 then
+		--printf("db.actor.radiation %s", db.actor.radiation)
+		ui_radbar_show = true
+	end
+
+	return
+		not ui_radbar_show and
+		not maingameui.m_ui_hud_states.m_ui_psy_bar_show and
+		not maingameui.m_ui_hud_states.m_ui_stamina_bar_show and
+		not maingameui.m_ui_hud_states.m_ui_health_bar_show
+end
+
+function check_all_mainhud_bars_are_above_threshold_and_static()
+	local state = { health = false, power = false, rad = false, psy = false }
+
+	if is_actor_hurting_or_healing() or get_actor_health() > DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD then
+		state.health = true
+	end
+
+	if get_actor_power() > DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD then
+		state.stamina = true
+	end
+
+	if get_actor_psy_health() > DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD then
+		state.psy = true
+	end
+
+	return state.health and state.stamina and state.psy
+end
+
+local preview_timer_tg = -1
+preview_on = false
+
+local function preview_vitals()
+	preview_timer_tg = time_global()
+	preview_on = true
+end
+
+local function check_preview_expired()
+	local time_since_preview = time_global() - preview_timer_tg
+	--printf("time_since_preview %s", time_since_preview)
+	if time_since_preview > DYNAHUD_MAIN_HUD_PREVIEW_TIME then
+		preview_timer_tg = -1
+		preview_on = false
+	end
+	--printf("is_preview_on %s",preview_on )
+	return preview_on
+end
+
+local all_bars_hidden_tg = -1
+local time_since_all_bars_hidden = -1
+
+function dynahud_main_hud_update()
+	local maingameui = ActorMenu.get_maingame()
+
+	if preview_on then check_preview_expired() end
+
+	if get_actor_psy_health() <= DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD or preview_on then
+		maingameui.m_ui_hud_states.m_ui_psy_bar_show = true
+	else
+		maingameui.m_ui_hud_states.m_ui_psy_bar_show = false
+	end
+
+	if get_actor_power() <= DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD or preview_on then
+		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = true
+	else
+		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = false
+	end
+
+	-- always show health bar if actor is damaged, healing, or preview is enabled
+	if is_actor_hurting_or_healing() or preview_on then
+		last_time_health_change = time_global()
+		maingameui.m_ui_hud_states.m_ui_health_bar_show = true
+	else
+		dynahud_autohide_main_hud()
+	end
+
+	myhealth = db.actor.health
+
+	if DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT < DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT_DISABLE then
+		main_hud_bg_controller()
+	end
+end
+
+main_hud_bg_visible = nil
+function main_hud_bg_controller()
+	--printf("main_hud_bg_visible %s",main_hud_bg_visible)
+
+	local main_hud_bars_hidden = check_all_mainhud_bars_are_hidden()
+
+	if main_hud_bars_hidden then
+		--printf("all_mainhud_bars_hidden true")
+		-- bars are hidden
+		if main_hud_bg_visible then
+			--printf("lets autohide_mainhud_bg")
+			autohide_mainhud_bg()
+		end
+	else
+		--printf("all_mainhud_bars_hidden false")
+		if not main_hud_bg_visible then
+			autoshow_main_hud_bg()
+		end
+	end
+end
+
+local MAIN_HUD_ON = "on"
+local MAIN_HUD_OFF = "off"
+
+local function refresh_status_icons(main_hud_status)
+	if DYNAHUD_ICONS_HUD_AUTOHIDE then
+		--printf("refresh_status_icons main hud is $s", main_hud_status)
+		if z_alticons and z_alticons.dynamic_icons_hud then
+			if main_hud_status == MAIN_HUD_ON then
+				z_alticons.main_hud_bg_on_status_icons()
+			else
+				z_alticons.main_hud_bg_off_status_icons()
+			end
+
+			actor_status.deactivate_hud()
+			actor_status.activate_hud()
+		end
+	end
+end
+
+local mainhud_hidden_tg = -1
+
+function autohide_mainhud_bg()
+	--printf("autohide_mainhud_bg")
+	if time_since_all_bars_hidden < 0 and all_bars_hidden_tg < 0 then
+		--printf("all bars have transitioned from visible to hidden")
+		-- all bars have transitioned from visible to hidden, take timestamp and wait timeout seconds before hiding bg
+		all_bars_hidden_tg = time_global()
+		time_since_all_bars_hidden = 0
+	else
+		-- we are counting since last time all bars did hide
+		time_since_all_bars_hidden = time_global() - all_bars_hidden_tg
+		--printf("time_since_all_bars_hidden %s", time_since_all_bars_hidden)
+		if time_since_all_bars_hidden > DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT then
+			-- time to hide the main hud bg
+			show_mainhud_bg(false)
+			main_hud_bg_visible = false
+			mainhud_hidden_tg = time_global()
+			refresh_status_icons(MAIN_HUD_OFF)
+		end
+	end
+end
+
+function autoshow_main_hud_bg()
+	refresh_status_icons(MAIN_HUD_ON)
+	if DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW then
+		preview_vitals()
+	end
+	show_mainhud_bg(true)
+	time_since_all_bars_hidden = -1
+	all_bars_hidden_tg = -1
+	mainhud_hidden_tg = -1
+	main_hud_bg_visible = true
+end
+
+function show_mainhud_bg(show)
+	local pos = ActorMenu.get_maingame().m_ui_hud_states["m_back"]:GetWndPos()
+	pos.y = ((not show and pos.y > 0) or (show and pos.y < 0)) and (-1 * pos.y) or pos.y
+	ActorMenu.get_maingame().m_ui_hud_states["m_back"]:SetWndPos(pos)
+end
+
+local icons_hud_tg_update = 0
+local icons_hud_tg_update_step = 100 --[ms]
+local status_icons_hidden = false
+local status_icons_hidden_tg = -1
+local preview_status_icons = false
+local preview_status_icons_tg = -1
+function status_icons_controller()
+	if USE_UPDATE_STEP then
+		local tg = time_global()
+		if tg < icons_hud_tg_update then
+			return
+		end
+		icons_hud_tg_update = tg + icons_hud_tg_update_step
+	end
+	if preview_status_icons then
+		local time_since_preview_status_icons = time_global() - preview_status_icons_tg
+		if time_since_preview_status_icons > DYNAHUD_ICONS_HUD_PREVIEW_TIME then
+			preview_status_icons = false
+			preview_status_icons_tg = -1
+		end
+		return
+	end
+
+	if not main_hud_bg_visible then
+		-- printf("mainhud_hidden_tg %s ", mainhud_hidden_tg)
+		local time_since_mainhud_hidden = time_global() - mainhud_hidden_tg
+		local icon_timers_expiring = false
+		if DYNAHUD_ICONS_HUD_TIMERS then
+			icon_timers_expiring = actor_status.is_icon_expiring(DYNAHUD_ICONS_HUD_TIMERS_EXPIRING)
+		end
+		--printf("time_since_mainhud_hidden %s ", time_since_mainhud_hidden)
+		if time_since_mainhud_hidden > DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT and not status_icons_hidden and not icon_timers_expiring then
+			-- printf("deactivate_icons_hud")
+			actor_status.deactivate_hud()
+			status_icons_hidden = true
+			status_icons_hidden_tg = time_global()
+		else
+			-- printf("cannot deactivate_icons_hud")
+			local time_since_status_icons_hidden = time_global() - status_icons_hidden_tg
+			if status_icons_hidden and (icon_timers_expiring or time_since_status_icons_hidden > DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER) then
+				-- printf("activate_icons_hud")
+				if time_since_status_icons_hidden > DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER then
+					actor_status.activate_hud(true)
+				else
+					actor_status.activate_hud()
+				end
+				status_icons_hidden = false
+				preview_status_icons = true
+				status_icons_hidden_tg = -1
+				preview_status_icons_tg = time_global()
+			end
+		end
+	elseif status_icons_hidden then
+		-- printf("main_hud_bg_visible")
+		actor_status.activate_hud()
+		status_icons_hidden = false
+		preview_status_icons = false
+		status_icons_hidden_tg = -1
+		preview_status_icons_tg = -1
+	end
+end
+
+function show_status_icons()
+	if DYNAHUD_ICONS_HUD_AUTOHIDE then
+		if status_icons_hidden then
+			--printf("show_status_icons")
+			actor_status.activate_hud()
+			status_icons_hidden = false
+			preview_status_icons = true
+			status_icons_hidden_tg = -1
+			preview_status_icons_tg = time_global()
+		end
+	end
+end
+
+------------------------ COLD SYSTEM -----------------------------------
+
+function dynamic_cold_system_init()
+	DYNAHUD_DYNAMIC_COLD_SYSTEM_HUD_KEYBIND = tonumber(cold_system_mcm.get_config("keybind"))
+
+	local cold_t = alife_storage_manager.get_state().cold
+	local cold_val = cold_t and cold_t.val
+
+	if cold_val then
+		printf("cold_val stored was %s", cold_val)
+	else
+		printf("cannot read cold_system cold table from save")
+		cold_val = 0
+	end
+
+
+	if cold_val > DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD then
+		cold_val_next_breakpoint = DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT *
+			math.ceil(cold_val / DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT)
+		if cold_val_next_breakpoint > 2000 then cold_val_next_breakpoint = 2000 end
+	else
+		cold_val_next_breakpoint = DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD
+	end
+
+	printf("[dynahud] cold system starting with cold_val %s and cold_val_next_breakpoint %s", cold_val,
+		cold_val_next_breakpoint)
+end
+
+local last_cold_val = 0
+local cold_system_show_recovery = false
+local cold_system_critical = false
+function cold_system_update()
+	local cold_t = alife_storage_manager.get_state().cold
+	local cold_val = cold_t and cold_t.val
+	local cold_sickness_val = cold_t and cold_t.sickness
+
+	if not cold_t then
+		--printf("cannot read cold_system cold table from save")
+		local state = {}
+		cold_system.save_state(state)
+		if state then
+			cold_t = dup_table(state.cold)
+			cold_val = cold_t and cold_t.val
+		else
+			cold_val = 0
+		end
+	end
+
+	--printf("cold_val %s", cold_val)
+	-- printf("cold_sickness_val %s", cold_sickness_val)
+
+	if cold_val > DYNAHUD_DYNAMIC_COLD_SYSTEM_CRITICAL_THRESHOLD then
+		if not cold_system_critical then
+			ui_mcm.set("cold_system/hud", true)
+		end
+		cold_system_critical = true
+	elseif cold_val > cold_val_next_breakpoint then
+		if cold_system_critical then
+			cold_system_critical = false
+			ui_mcm.set("cold_system/hud", false)
+		end
+		-- hud show up on breakpoints only when not in static mode
+		if not cold_system_show_recovery then
+			cold_system.on_key_press(DYNAHUD_DYNAMIC_COLD_SYSTEM_HUD_KEYBIND)
+			cold_val_next_breakpoint = cold_val + DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT
+		end
+	end
+
+	local cold_val_delta = cold_val - last_cold_val
+	if cold_val_delta < 0 then
+		-- cold value decreasing, we want to the hud always visible
+		if not cold_system_show_recovery then
+			if DYNAHUD_DYNAMIC_COLD_SYSTEM_SHOW_RECOVERY then
+				ui_mcm.set("cold_system/hud", true)
+				cold_system_show_recovery = true
+			end
+		end
+		-- we need to downgrage the breakpoint scale as cold goes down
+		if cold_val > DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD then
+			cold_val_next_breakpoint = DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT *
+				math.ceil(cold_val / DYNAHUD_DYNAMIC_COLD_SYSTEM_BREAKPOINT)
+		else
+			cold_val_next_breakpoint = DYNAHUD_DYNAMIC_COLD_SYSTEM_SAFE_THRESHOLD
+		end
+	else
+		-- cold value increasing, we want the hud to show up only at breakpoints
+		-- disable show on recovery if enabled
+		if cold_system_show_recovery then
+			ui_mcm.set("cold_system/hud", false)
+			cold_system_show_recovery = false
+		end
+	end
+
+	last_cold_val = cold_val
+end
+
+local cold_hud_tg_update = 0
+local cold_hud_tg_update_step = 1000 --[ms]
+function cold_system_controller()
+	if USE_UPDATE_STEP then
+		local tg = time_global()
+		if tg < cold_hud_tg_update then
+			return
+		end
+		cold_hud_tg_update = tg + cold_hud_tg_update_step
+	end
+
+	if DYNAHUD_DYNAMIC_COLD_SYSTEM_ENABLE then
+		cold_system_update()
+	end
+end
+
+----------------------- BHS HUD SUPPORT ----------------------------------------------
+
+function enable_bhs_hud()
+	dynahud_bhs_hud_visible = false
+	dynahud_dynamic_bhs_hud_on = true
+	zzz_player_injuries.show_hud_type = 0
+	dynahud_pref_hud_type = 0
+	print_tip("ui_mcm_dynahud_dynamic_bhs_hud_enabled")
+	print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on")
+end
+
+function disable_bhs_hud()
+	zzz_player_injuries.show_hud_type = 0
+	dynahud_bhs_hud_visible = false
+	dynahud_dynamic_bhs_hud_on = false
+	dynahud_pref_hud_type = 0
+	print_tip("ui_mcm_dynahud_dynamic_bhs_hud_disabled")
+end
+
+function dynahud_bhs_hud_switcher()
+	-- show_hud_type=0 hides the bhs hud (in this mode we can dynamically make it appear or disappear based on conditions - thus dynamic bhs)
+	-- 		the dynamic bhs will use the `show_hud_type` toggle to enable/disable the bhs hud on necessity and instad the `dynahud_pref_hud_type` will be used to understand the user preferences around bhs (H hotkey)
+	-- show_hud_type=2 displays the bhs hud (in this mod the bhs is statically displayed always)
+	--printf("dynahud - dynahud_bhs_hud_switcher called")
+	if dynahud_pref_hud_type == 0 then
+		zzz_player_injuries.show_hud_type = 2
+		dynahud_pref_hud_type = 2
+		dynahud_dynamic_bhs_hud_on = false
+		if not dynahud_bhs_hud_visible then
+			dynahud_bhs_hud_visible = true
+		end
+		zzz_player_injuries.show_hud_change_time = time_global()
+		print_tip("ui_mcm_dynahud_dynamic_bhs_hud_off")
+		print_tip("ui_mcm_dynahud_dynamic_bhs_hud_off_help1")
+	elseif dynahud_pref_hud_type == 2 then
+		zzz_player_injuries.show_hud_type = 0
+		dynahud_pref_hud_type = 0
+		dynahud_dynamic_bhs_hud_on = true
+		bhs_hud_dismissed = false
+		if dynahud_bhs_hud_visible then
+			dynahud_bhs_hud_visible = false
+		end
+		zzz_player_injuries.show_hud_change_time = time_global()
+		print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on")
+		if limbs_fully_healed then
+			print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on_noinjuries")
+		else
+			print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on_injuried")
+		end
+	end
+end
+
+local head_difference
+local torso_difference
+local rightarm_difference
+local leftarm_difference
+local rightleg_difference
+local leftleg_difference
+local function evaluate_player_injury()
+	head_difference = zzz_player_injuries.maxhp.head - zzz_player_injuries.health.head + zzz_player_injuries.timedhp
+		.head
+	torso_difference = zzz_player_injuries.maxhp.torso - zzz_player_injuries.health.torso +
+		zzz_player_injuries.timedhp.torso
+	rightarm_difference = zzz_player_injuries.maxhp.rightarm - zzz_player_injuries.health.rightarm +
+		zzz_player_injuries.timedhp.leftarm
+	leftarm_difference = zzz_player_injuries.maxhp.leftarm - zzz_player_injuries.health.leftarm +
+		zzz_player_injuries.timedhp.rightarm
+	rightleg_difference = zzz_player_injuries.maxhp.rightleg - zzz_player_injuries.health.rightleg +
+		zzz_player_injuries.timedhp.leftleg
+	leftleg_difference = zzz_player_injuries.maxhp.leftleg - zzz_player_injuries.health.leftleg +
+		zzz_player_injuries.timedhp.rightleg
+
+	limbs_total_injury = head_difference + torso_difference + rightarm_difference + leftarm_difference +
+		rightleg_difference + leftleg_difference
+	--printf("limbs_total_injury %s", limbs_total_injury)
+end
+
+local function is_serious_injury()
+	local is_serious_injury = false
+
+	if zzz_player_injuries.health.head < 4 or zzz_player_injuries.health.torso < 4 or zzz_player_injuries.health.rightarm < 3 or zzz_player_injuries.health.leftarm < 3 or zzz_player_injuries.health.rightleg < 3 or zzz_player_injuries.health.leftleg < 3 then
+		is_serious_injury = true
+	end
+
+	return is_serious_injury
+end
+
+function check_limbs_fully_healed()
+	evaluate_player_injury()
+
+	limbs_fully_healed = true
+
+	if (head_difference > 0 or torso_difference > 0 or rightarm_difference > 0 or leftarm_difference > 0 or rightleg_difference > 0 or leftleg_difference > 0) then
+		limbs_fully_healed = false
+	end
+	if previous_limbs_total_injury ~= limbs_total_injury then
+		bhs_hud_dismissed = false
+	end
+end
+
+function dynahud_bhs_hud_dismiss_update()
+	-- printf("time_bhs_hud_dismissed = %s | DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT %s | MAX %s | remaining %s", time_bhs_hud_dismissed, DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT, DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT_MAX, (time_global() - time_bhs_hud_dismissed))
+	if DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT < DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT_MAX then
+		if bhs_hud_dismissed and (time_global() - time_bhs_hud_dismissed) > DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT then
+			bhs_hud_dismissed = false
+		end
+	end
+end
+
+local function always_hide()
+	local always_hide = false
+	if DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE then
+		local serious_injured = is_serious_injury()
+		if serious_injured then
+			if DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_FORCE then
+				always_hide = true
+			else
+				always_hide = false
+			end
+		else
+			always_hide = true
+		end
+	end
+
+	return always_hide
+end
+
+function dynahud_dynamic_bhs_hud_update()
+	-- call this function only if dynahud_dynamic_bhs_hud_on == true
+	-- this function is resposible to update the dynamic bhs hud based on the limb status
+	-- broken limbs
+	-- 		bhs hud not visible --> show hud
+	-- 		bhs hud visible --> do nothing
+
+	-- limbs healed --> hide hud
+	-- 		bhs hud not visible --> do nothing
+	-- 		bhs hud visible --> hide hud
+
+	local time_since_dyn_bhs_update = time_global() - last_time_dyn_bhs_updated
+
+	-- we try to update the bhs hud every `dynahud_dyn_bhs_update_tick` (default 6 seconds)
+	if (time_since_dyn_bhs_update > DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_TICK) then
+		-- check if any limb is broken
+		check_limbs_fully_healed()
+		if not limbs_fully_healed and not bhs_hud_dismissed and not always_hide() then
+			-- broken limbs
+			-- we show the bhs hud only if it's not visible
+			if not dynahud_bhs_hud_visible then
+				zzz_player_injuries.show_hud_type = 2
+				dynahud_bhs_hud_visible = true
+			end
+			-- update the last bhs_update timestamp
+			last_time_dyn_bhs_updated = time_global()
+			-- limbs healed
+		else
+			-- bhs hud visible --> hide hud, hiding hud will be done after a while (default 15 seconds) though
+			if time_since_dyn_bhs_update > DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT then
+				if dynahud_bhs_hud_visible and not inventory_opened then
+					zzz_player_injuries.show_hud_type = 0
+					dynahud_bhs_hud_visible = false
+				end
+				-- update the last bhs_update timestamp
+				last_time_dyn_bhs_updated = time_global()
+			end
+		end
+	end
+end
+
+function create_dismiss_bhs_event()
+	--printf("[dynahud] priming time event bhs_keypress:bhs_keypress_long")
+	CreateTimeEvent("bhs_keypress", "bhs_keypress_long", 0.5, function()
+		--printf("fired time event bhs_keypress:bhs_keypress_long")
+		bhs_change_state = true
+		if not dynahud_dynamic_bhs_hud_on then
+			print_tip("ui_mcm_dynahud_dynamic_bhs_off_dismiss_not_allowed")
+			--printf("bhs - timed event fired for bhs hud dismiss [false:dynahud_dynamic_bhs_hud_off]")
+			return true
+		end
+		local serious_injured = is_serious_injury()
+		if serious_injured and not DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_FORCE then
+			print_tip("ui_mcm_dynahud_bhs_dismiss_not_allowed")
+			--printf("bhs - timed event fired for bhs hud dismiss [false: serious_injured]")
+			return true
+		end
+		-- printf("dynahud_bhs_hud_visible %s inventory_opened %s",dynahud_bhs_hud_visible, inventory_opened)
+		if dynahud_bhs_hud_visible and not inventory_opened then
+			zzz_player_injuries.show_hud_type = 0
+			dynahud_bhs_hud_visible = false
+			bhs_hud_dismissed = true
+			time_bhs_hud_dismissed = time_global()
+			previous_limbs_total_injury = limbs_total_injury
+			print_tip("ui_mcm_dynahud_bhs_dismissed")
+			--printf("bhs - timed event fired for bhs hud dismiss [true]")
+			return true
+		end
+		--printf("bhs - timed event fired for bhs hud dismiss [false]")
+		return true
+	end)
+end
+
+------------------------ Overriding zzz_player_injuries functions ------------------------
+
+local inv_closed_hud_type = nil
+local function ActorMenu_on_mode_changed(mode, last_mode)
+	--printf("ActorMenu_on_mode_changed mode %s last_mode %s",mode,last_mode )
+	if mode == 1 then
+		if DYNAHUD_BHS_SUPPORT then
+			inv_closed_hud_type = zzz_player_injuries.show_hud_type
+		end
+		inventory_opened = true
+		-- when opening the inventory the bhs hud will be shown only if dynahud_dynamic_bhs_hud_on
+		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type ~= 2 then
+			zzz_player_injuries.show_hud_type = 2
+			dynahud_bhs_hud_visible = true
+		end
+	end
+	if last_mode == 1 then --inv closed
+		-- when closing the inventory the bhs hud will be hidden if the dynahud_dynamic_bhs_hud_on is true and no limbs are broken
+		inventory_opened = false
+		--EmptyPreviewBars()
+		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type == 2 then
+			if dynahud_dynamic_bhs_hud_on and not DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE then
+				if limbs_fully_healed or bhs_hud_dismissed then
+					zzz_player_injuries.show_hud_type = 0
+					dynahud_bhs_hud_visible = false
+				end
+			elseif not dynahud_dynamic_bhs_hud_on then
+				zzz_player_injuries.show_hud_type = inv_closed_hud_type
+				if inv_closed_hud_type == 0 then
+					dynahud_bhs_hud_visible = false
+				else
+					dynahud_bhs_hud_visible = true
+				end
+			end
+		end
+
+		if DYNAHUD_ICONS_HUD_AUTOHIDE and DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW then
+			show_status_icons()
+		end
+	end --looting closed
+end
+
+----------------------- Input Keys handling ---------------------------------------------
+
+local function bhs_hud_on_key_press(dik)
+	if dik == DIK_keys.DIK_H then
+		create_dismiss_bhs_event()
+	end
+end
+
+local function bhs_hud_on_key_release(dik)
+	-- bhs hud toggle key
+	if dik == DIK_keys.DIK_H then
+		RemoveTimeEvent("bhs_keypress", "bhs_keypress_long")
+		if not bhs_change_state then
+			if DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
+				dynahud_bhs_hud_switcher()
+			elseif DYNAHUD_BHS_PATCH ~= 2 then
+				zzz_player_injuries.on_key_press(dik)
+			end
+			xr_sound.set_sound_play(db.actor:id(), "pda_tips")
+		end
+		bhs_change_state = false
+	end
+end
+
+local function mainhud_on_key_release(dik)
+	-- main hud toggle key
+	local bind = dik_to_bind(dik)
+	if (bind == key_bindings.kCUSTOM6) then
+		local main_hud_on = get_console_cmd(1, "hud_draw")
+		if main_hud_on then
+			print_tip("ui_mcm_dynahud_main_hud_off", 1000)
+		else
+			print_tip("ui_mcm_dynahud_main_hud_on", 1000)
+		end
+	end
+end
+
+local compass_raised = false
+local function compass_on_key_press(dik)
+	-- local KEY = ui_mcm.get("rax_mmt/keybind")
+
+	if (dik == DIK_keys.DIK_RSHIFT) then
+		local maingameui = ActorMenu.get_maingame()
+		if (maingameui and maingameui.UIZoneMap) then
+			local m_clipFrame = maingameui.UIZoneMap:MapFrame()
+			local p = m_clipFrame:GetWndPos();
+			local m_background = maingameui.UIZoneMap:Background()
+			local b = m_background:GetWndPos();
+			-- printf("frame p.x %s p.y %s",name, p.x, p.y)
+			-- printf("bg b.x %s b.y %s", b.x, b.y)
+			if not compass_raised then
+				printf("raise compass")
+				p.y = p.y - 100
+				b.y = b.y - 100
+			else
+				printf("lower compass")
+				p.y = p.y + 100
+				b.y = b.y + 100
+			end
+			compass_raised = not compass_raised
+			m_clipFrame:SetWndPos(vector2():set(p.x, p.y));
+			m_background:SetWndPos(vector2():set(b.x, b.y));
+		end
+	end
+end
+
+local function on_key_release(dik)
+	mainhud_on_key_release(dik)
+	if DYNAHUD_BHS_SUPPORT then bhs_hud_on_key_release(dik) end
+	companion_hud_on_key_release(dik)
+end
+
+local function on_key_press(dik)
+	if DYNAHUD_BHS_SUPPORT then bhs_hud_on_key_press(dik) end
+	companion_hud_on_key_press(dik)
+end
+
+----------------------- MAGAZINES ---------------------------------------------
+
+-- local mag_hud_change_state = false
+-- local hud_visible_tg = 0
+local reloading_started = false
+function dynahud_mags_ui_update(action)
+	player_action = action
+	-- printf("[dynahud] updating mag hud, following action %s", player_action)
+	ui_mcm.set("magazines/hud/show_hud", true)
+	mag_hud.on_screen_resolution_changed()
+
+	------- minimap hiding
+	---- minimap is hidden only whern on the bottom right corner
+	if MINIMAP.style == 0 then
+		-- printf("[dynahud] updating mag hud, hiding minimap")
+		local minimap_enabled = ui_options.get("video/hud/show_minimap")
+		minimap_while_weapon_equipped = minimap_enabled
+		if minimap_enabled then
+			show_minimap(false)
+		end
+	end
+	------- minimap hiding
+
+	--- ammo and icon counter hiding
+	local temp_hide_ammo_counter_icon = false
+	if HUD.style == 0 then
+		ui_show_cur_ammo(false)
+		ui_show_weapon_icon(false)
+		temp_hide_ammo_counter_icon = true
+		if ui_bartgac_mcm then ui_bartgac_mcm.BGAC_OFF() end
+	elseif player_action == ACTION.RELOAD and DYNAHUD_DYNAMIC_WEAPON_HUD_RELOAD_SHOW then
+		update_shooting_tg()
+		stop_autohide_ammo_hud = true
+	elseif player_action == ACTION.AMMO_CHECK and DYNAHUD_DYNAMIC_WEAPON_HUD_WEAPONCHECK_SHOW then
+		update_shooting_tg()
+		stop_autohide_ammo_hud = true
+	end
+	--printf("HUD.style  %s",HUD.style )
+	--printf("temp_hide_ammo_counter_icon %s",temp_hide_ammo_counter_icon)
+	--printf("stop_autohide_ammo_hud %s",stop_autohide_ammo_hud)
+	--- ammo and icon counter hiding
+
+	CreateTimeEvent("dynahud_mag_hud", "hide_ui", DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE_TIMEOUT, function()
+		--printf("Consuming Event dynahud_mag_hud:hide_ui")
+		ui_mcm.set("magazines/hud/show_hud", false)
+		mag_hud.on_screen_resolution_changed()
+		-- printf("[dynahud] mag reload hud event triggered following action %s", player_action)
+		------- minimap showing
+		---- minimap is shown only if it was visible before the reload
+		if MINIMAP.style == 0 then
+			local minimap_enabled = ui_options.get("video/hud/show_minimap")
+			if not minimap_enabled and minimap_while_weapon_equipped then
+				show_minimap(true)
+			end
+		end
+		------- minimap handling
+
+		--- ammo and icon counter showing
+		--printf("temp_hide_ammo_counter_icon %s",temp_hide_ammo_counter_icon)
+		--printf("stop_autohide_ammo_hud %s",stop_autohide_ammo_hud)
+		stop_autohide_ammo_hud = false
+		if temp_hide_ammo_counter_icon then
+			ui_show_cur_ammo(true)
+			ui_show_weapon_icon(true)
+			if ui_bartgac_mcm then ui_bartgac_mcm.BGAC_ON() end
+		end
+		--- ammo and icon counter showing
+		player_action = ACTION.IDLE
+		-- mag_hud_change_state = true
+		-- mag_hud_visible_tg = time_global()
+		return true
+	end)
+end
+
+function dynahud_mags_ui_update_ammocheck()
+	if DYNAHUD_MAGREDUX_SUPPORT and DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE and DYNAHUD_DYNAMIC_MAGHUD_SHOW_AMMOCHECK then
+		dynahud_mags_ui_update(ACTION.AMMO_CHECK)
+	end
+end
+
+local function dynahud_mags_ui_update_jammin()
+	local itm = db.actor:active_item()
+	local is_weapon = itm and IsWeapon(itm) or false
+	local is_suppoorted_weapon = magazines.is_supported_weapon(itm)
+	local state = itm and itm:get_state()
+	printf("DYNAHUD JAMMING weapon state %s", state)
+	dynahud_mags_ui_update(ACTION.UNJAMMING)
+end
+
+----------------------------------- COMPANION HUD ---------------------------------------
+
+local companion_hud_preview_tg = -1
+local companion_hud_preview_on = false
+function preview_companion_hud_event()
+	CreateTimeEvent("companion_hud_keypress", "companion_hud_keypress_long", 0.5, function()
+		--printf("companion_hud_keypress")
+		if not companion_hud_visible then
+			axr_companions.activate_hud()
+			companion_hud_visible = true
+			companion_hud_preview_on = true
+			companion_hud_preview_tg = time_global()
+			--printf("companion_hud_preview_on %s", companion_hud_preview_on)
+		end
+		return true
+	end)
+end
+
+local function check_companion_hud_preview_expired()
+	local time_since_preview = time_global() - companion_hud_preview_tg
+
+	if time_since_preview > DYNAHUD_COMPANION_HUD_PREVIEW_TIME then
+		companion_hud_preview_tg = -1
+		companion_hud_preview_on = false
+	end
+
+	return companion_hud_preview_on
+end
+
+function companion_hud_on_key_press(dik)
+	local bind = dik_to_bind(dik)
+	if bind == key_bindings.kCUSTOM18 then
+		preview_companion_hud_event()
+	end
+end
+
+function companion_hud_on_key_release(dik)
+	local bind = dik_to_bind(dik)
+	if bind == key_bindings.kCUSTOM18 then
+		if DYNAHUD_COMPANION_HUD_AUTOHIDE then
+			RemoveTimeEvent("companion_hud_keypress", "companion_hud_keypress_long")
+			--printf("companion_hud_preview_on %s", companion_hud_preview_on)
+			if not companion_hud_preview_on then
+				--printf("axr_companions.on_key_release")
+				axr_companions.on_key_release(dik)
+			end
+		else
+			axr_companions.on_key_release(dik)
+		end
+	else
+		axr_companions.on_key_release(dik)
+	end
+end
+
+function is_companions_squad_in_danger()
+	--printf("============================================================================================")
+	local squad_is_peaceful = true
+	for id, squad in pairs(axr_companions.companion_squads) do
+		if (squad and squad.commander_id) then
+			local i = 0
+			for k in squad:squad_members() do
+				local npc = db.storage[k.id] and db.storage[k.id].object
+				i = i + 1
+				-- printf("companion[%s]", i)
+				if npc then
+					local is_peaceful = false
+					-- check if is in fight
+					if (npc and npc:alive()) then
+						is_peaceful = (not npc:best_enemy()) and npc:dont_has_info("npcx_beh_ignore_combat") and true or
+							false
+					end
+					-- printf("companion[%s] is_peaceful %s - dist: %s",k.id, is_peaceful, distance_between(db.actor,npc))
+					-- check if is too far away
+					if DYNAHUD_COMPANION_CHECK_DISTANCE and npc and distance_between(db.actor, npc) > DYNAHUD_COMPANION_SAFE_DISTANCE then
+						is_peaceful = false
+					end
+					squad_is_peaceful = squad_is_peaceful and is_peaceful
+					-- printf("current calculation for squad is_peaceful %s", squad_is_peaceful)					
+				end
+				-- printf("--")
+			end
+		end
+	end
+	if not squad_is_peaceful then
+		printf("squad is under attack or attacking")
+	end
+	--printf("squad is resolved peaceful %s", squad_is_peaceful)
+	--printf("============================================================================================")
+	return not squad_is_peaceful
+end
+
+function init_companion_hud()
+	if DYNAHUD_COMPANION_HUD_AUTOHIDE then
+		local is_danger = is_companions_squad_in_danger()
+		if is_danger then
+			axr_companions.activate_hud()
+			companion_hud_visible = true
+		else
+			-- axr_companions.deactivate_hud()
+			-- companion_hud_visible = false
+			axr_companions.activate_hud()
+			companion_hud_visible = true
+			companion_hud_preview_on = true
+			companion_hud_preview_tg = time_global()
+		end
+	else
+		axr_companions.activate_hud()
+	end
+end
+
+local companions_hud_tg_update = 0
+local companions_hud_tg_update_step = 1000 --[ms]
+function update_companion_hud()
+	if USE_UPDATE_STEP then
+		local tg = time_global()
+		if tg < companions_hud_tg_update then
+			return
+		end
+		companions_hud_tg_update = tg + companions_hud_tg_update_step
+	end
+
+	if companion_hud_preview_on then check_companion_hud_preview_expired() end
+
+	--printf("[on update] companion_hud_preview_on %s", companion_hud_preview_on)
+
+	local is_danger = is_companions_squad_in_danger()
+
+	if is_danger and not companion_hud_visible then
+		axr_companions.activate_hud()
+		companion_hud_visible = true
+	elseif not is_danger and companion_hud_visible and not companion_hud_preview_on then
+		axr_companions.deactivate_hud()
+		companion_hud_visible = false
+	end
+end
+
+----------------------------------- ON GAME START ---------------------------------------
+
+function on_game_start()
+	initialize_plugins_support()
+
+	RegisterScriptCallback("actor_on_first_update", dynahud_actor_on_first_update)
+	RegisterScriptCallback("actor_on_update", dynahud_actor_on_update)
+	if DYNAHUD_BHS_SUPPORT then
+		UnregisterScriptCallback("on_key_press", zzz_player_injuries.on_key_press)
+	end
+	RegisterScriptCallback("ActorMenu_on_mode_changed", ActorMenu_on_mode_changed)
+	RegisterScriptCallback("on_key_press", on_key_press)
+	UnregisterScriptCallback("on_key_release", axr_companions.on_key_release)
+	RegisterScriptCallback("on_key_release", on_key_release)
+	RegisterScriptCallback("actor_on_net_destroy", dynahud_on_destroy)
+	RegisterScriptCallback("actor_on_weapon_fired", update_shooting_tg)
+	RegisterScriptCallback("actor_on_weapon_zoom_in", enter_weapon_aiming)
+	RegisterScriptCallback("actor_on_weapon_zoom_out", exit_weapon_aiming)
+	RegisterScriptCallback("actor_on_item_use", show_status_icons)
+end
