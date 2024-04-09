@@ -917,6 +917,7 @@ end
 
 local weapon_hud_tg_update = 0
 local weapon_hud_tg_update_step = 100 --[ms]
+
 function dynahud_weapon_hud_controller()
 	local tg = time_global()
 	if tg < weapon_hud_tg_update then
@@ -934,20 +935,6 @@ function show_firemode_gui(show)
 end
 
 ----------------------- MAIN HUD SUPPORT ---------------------------------------------
-
-function dynahud_autohide_main_hud()
-	local maingameui = ActorMenu.get_maingame()
-
-	-- Health autohide will only kick in if health above of a threshold and after a certain timeout since being stable
-	if db.actor.health > DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD then
-		local time_since_last_damage = time_global() - last_time_health_change
-		if (time_since_last_damage > DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT) then
-			maingameui.m_ui_hud_states.m_ui_health_bar_show = false
-		end
-	else
-		maingameui.m_ui_hud_states.m_ui_health_bar_show = true
-	end
-end
 
 function check_all_mainhud_bars_are_hidden()
 	local maingameui = ActorMenu.get_maingame()
@@ -997,13 +984,29 @@ end
 
 local function check_preview_expired()
 	local time_since_preview = time_global() - preview_timer_tg
+
 	--printf("time_since_preview %s", time_since_preview)
 	if time_since_preview > DYNAHUD_MAIN_HUD_PREVIEW_TIME then
 		preview_timer_tg = -1
 		preview_on = false
 	end
+
 	--printf("is_preview_on %s",preview_on )
 	return preview_on
+end
+
+function dynahud_autohide_main_hud()
+	-- local maingameui = ActorMenu.get_maingame()
+
+	-- -- Health autohide will only kick in if health above of a threshold and after a certain timeout since being stable
+	-- if db.actor.health > DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD then
+	-- 	local time_since_last_damage = time_global() - last_time_health_change
+	-- 	if (time_since_last_damage > DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT) then
+	-- 		maingameui.m_ui_hud_states.m_ui_health_bar_show = false
+	-- 	end
+	-- else
+	-- 	maingameui.m_ui_hud_states.m_ui_health_bar_show = true
+	-- end
 end
 
 local all_bars_hidden_tg = -1
