@@ -550,7 +550,9 @@ end
 function is_actor_hurting_or_healing()
 	local health_delta = myhealth - get_actor_health()
 
-	if health_delta > 0.0001 or health_delta < -0.0001 then
+	-- Delta was previously defined as 0.0001 but slow damage (e.g. radiation) can be permitted.
+	-- HUD will be displayed once values fall below display threshold, only fast damage and healing will be displayed.
+	if math.abs(health_delta) > 0.001 then
 		return true
 	end
 
