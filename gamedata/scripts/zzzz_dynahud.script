@@ -1143,6 +1143,10 @@ function set_main_hud_bg_visibility(show)
 	ActorMenu.get_maingame().m_ui_hud_states["m_back"]:SetWndPos(pos)
 end
 
+function autoshow_main_hud_bg()
+	-- Stub function for alt icons script.
+end
+
 local icons_hud_tg_update = 0
 local icons_hud_tg_update_step = 100 --[ms]
 local status_icons_hidden = false
