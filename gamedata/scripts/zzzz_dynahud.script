@@ -401,6 +401,7 @@ local function dynahud_initialize()
 		else
 			enable_bhs_hud()
 		end
+
 		last_time_health_change = time_global()
 		last_time_dyn_bhs_updated = last_time_health_change
 		inventory_opened = false
@@ -410,6 +411,7 @@ local function dynahud_initialize()
 		bhs_hud_dismissed = false
 		time_bhs_hud_dismissed = time_global()
 		--zzz_player_injuries.HUDUpdate()
+
 		if DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_ON_MAPLOAD then
 			create_dismiss_bhs_event()
 		end
@@ -956,10 +958,11 @@ function check_all_mainhud_bars_are_hidden()
 		not maingameui.m_ui_hud_states.m_ui_health_bar_show
 end
 
-function check_all_mainhud_bars_are_above_threshold_and_static()
+function check_all_mainhud_bars_are_static_and_above_threshold()
 	local state = { health = false, power = false, rad = false, psy = false }
+	last_time_health_change = time_global()
 
-	if is_actor_hurting_or_healing() or get_actor_health() > DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD then
+	if get_actor_health() > DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD and not is_actor_hurting_or_healing() then
 		state.health = true
 	end
 
@@ -1010,41 +1013,41 @@ function dynahud_autohide_main_hud()
 end
 
 local all_bars_hidden_tg = -1
+local time_hud_last_shown = -1
 local time_since_all_bars_hidden = -1
 
 function dynahud_main_hud_update()
 	local maingameui = ActorMenu.get_maingame()
+	local hud_is_hidden = check_all_mainhud_bars_are_hidden()
+	local hud_should_be_hidden = check_all_mainhud_bars_are_static_and_above_threshold()
 
 	if preview_on then check_preview_expired() end
 
-	if get_actor_psy_health() <= DYNAHUD_MAIN_HUD_HIDE_PSY_THRESHOLD or preview_on then
-		maingameui.m_ui_hud_states.m_ui_psy_bar_show = true
-	else
-		maingameui.m_ui_hud_states.m_ui_psy_bar_show = false
-	end
+	-- Define timeout as minimum time the HUD should remain visible after being shown
+	local did_exceed_cooldown_for_show = time_global() > time_hud_last_shown + DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT
 
-	if get_actor_power() <= DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD or preview_on then
-		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = true
-	else
+	-- if all bars are above threshold and static (and minimum time visible was exceeded), hide everything
+	if not hud_is_hidden and did_exceed_cooldown_for_show and hud_should_be_hidden and not preview_on then
+		maingameui.m_ui_hud_states.m_ui_health_bar_show = false
 		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = false
-	end
+		maingameui.m_ui_hud_states.m_ui_psy_bar_show = false
 
-	-- always show health bar if actor is damaged, healing, or preview is enabled
-	if is_actor_hurting_or_healing() or preview_on then
-		last_time_health_change = time_global()
+		hide_mainhud_bg()
+	elseif preview_on or (hud_is_hidden and not hud_should_be_hidden) then
+		-- if preview mode is enabled or any of the bars are below threshold, show everything
 		maingameui.m_ui_hud_states.m_ui_health_bar_show = true
-	else
-		dynahud_autohide_main_hud()
+		maingameui.m_ui_hud_states.m_ui_psy_bar_show = true
+		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = true
+
+		time_hud_last_shown = time_global()
+		show_main_hud_bg()
 	end
 
 	myhealth = db.actor.health
-
-	if DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT < DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT_DISABLE then
-		main_hud_bg_controller()
-	end
 end
 
 main_hud_bg_visible = nil
+
 function main_hud_bg_controller()
 	--printf("main_hud_bg_visible %s",main_hud_bg_visible)
 
@@ -1055,12 +1058,14 @@ function main_hud_bg_controller()
 		-- bars are hidden
 		if main_hud_bg_visible then
 			--printf("lets autohide_mainhud_bg")
-			autohide_mainhud_bg()
+			-- Disabled for testing, let `dynahud_main_hud_update` handle background instantly, too
+			-- hide_mainhud_bg()
 		end
 	else
 		--printf("all_mainhud_bars_hidden false")
 		if not main_hud_bg_visible then
-			autoshow_main_hud_bg()
+			-- Disabled for testing, let `dynahud_main_hud_update` handle background instantly, too
+			-- show_main_hud_bg()
 		end
 	end
 end
@@ -1086,40 +1091,51 @@ end
 
 local mainhud_hidden_tg = -1
 
-function autohide_mainhud_bg()
+-- Currently disabled for WIP, use `hide_mainhud_bg` instead.
+function hide_mainhud_bg_with_delay()
 	--printf("autohide_mainhud_bg")
 	if time_since_all_bars_hidden < 0 and all_bars_hidden_tg < 0 then
 		--printf("all bars have transitioned from visible to hidden")
 		-- all bars have transitioned from visible to hidden, take timestamp and wait timeout seconds before hiding bg
-		all_bars_hidden_tg = time_global()
-		time_since_all_bars_hidden = 0
+		-- all_bars_hidden_tg = time_global()
+		-- time_since_all_bars_hidden = 0
 	else
 		-- we are counting since last time all bars did hide
-		time_since_all_bars_hidden = time_global() - all_bars_hidden_tg
+		-- time_since_all_bars_hidden = time_global() - all_bars_hidden_tg
 		--printf("time_since_all_bars_hidden %s", time_since_all_bars_hidden)
 		if time_since_all_bars_hidden > DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT then
 			-- time to hide the main hud bg
-			show_mainhud_bg(false)
-			main_hud_bg_visible = false
-			mainhud_hidden_tg = time_global()
-			refresh_status_icons(MAIN_HUD_OFF)
+			-- hide_mainhud_bg()
 		end
 	end
 end
 
-function autoshow_main_hud_bg()
+function hide_mainhud_bg()
+	set_main_hud_bg_visibility(false)
+
+	main_hud_bg_visible = false
+	mainhud_hidden_tg = time_global()
+	time_since_all_bars_hidden = time_global()
+
+	refresh_status_icons(MAIN_HUD_OFF)
+end
+
+function show_main_hud_bg()
 	refresh_status_icons(MAIN_HUD_ON)
+
 	if DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW then
 		preview_vitals()
 	end
-	show_mainhud_bg(true)
+
+	set_main_hud_bg_visibility(true)
+
 	time_since_all_bars_hidden = -1
 	all_bars_hidden_tg = -1
 	mainhud_hidden_tg = -1
 	main_hud_bg_visible = true
 end
 
-function show_mainhud_bg(show)
+function set_main_hud_bg_visibility(show)
 	local pos = ActorMenu.get_maingame().m_ui_hud_states["m_back"]:GetWndPos()
 	pos.y = ((not show and pos.y > 0) or (show and pos.y < 0)) and (-1 * pos.y) or pos.y
 	ActorMenu.get_maingame().m_ui_hud_states["m_back"]:SetWndPos(pos)
@@ -1131,6 +1147,7 @@ local status_icons_hidden = false
 local status_icons_hidden_tg = -1
 local preview_status_icons = false
 local preview_status_icons_tg = -1
+
 function status_icons_controller()
 	if USE_UPDATE_STEP then
 		local tg = time_global()
