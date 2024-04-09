@@ -1,0 +1,40 @@
+-- This DXML script removes the rad bar, shifts other elements in place, and disables the magazine/ammo display.
+
+function on_xml_read()
+	RegisterScriptCallback("on_xml_read", function(xml_path, xml_obj)
+		if xml_path == [[ui\ui_custom_msgs.xml]] then
+			on_ui_custom_msgs_read(xml_obj)
+		elseif xml_path == [[ui\dynahud_ui.xml]] then
+			on_dynahud_ui_read(xml_obj)
+		elseif xml_path == [[ui\maingame_16.xml]] then
+			on_maingame_16_read(xml_obj)
+		end
+	end)
+end
+
+-- Hide blinking icon in HUD for new PDA entries.
+-- Considered obsolete and obtrusive, a regular notification is already displayed.
+function on_ui_custom_msgs_read(xml_obj)
+	local notification_reminder_element_object = xml_obj:query("notify_icon")[1]
+	xml_obj:setElementAttr(notification_reminder_element_object, { y = 9999 })
+end
+
+-- Hide radiation bar in DynaHUD module.
+function on_dynahud_ui_read(xml_obj)
+	local radbar_display_element_object = xml_obj:query("radbar_display")[1]
+	xml_obj:setElementAttr(radbar_display_element_object, { y = 9999 })
+end
+
+function on_maingame_16_read(xml_obj)
+	-- Take `progress_bar_psy` and apply `y` of `703`.
+	local progress_bar_psy_element_object = xml_obj:query("progress_bar_psy")[1]
+	xml_obj:setElementAttr(progress_bar_psy_element_object, { y = 706 })
+end
+
+-- General init
+
+function on_game_start()
+	if zzzz_dynahud and zzzz_dynahud.rad_hud_enabled then
+		zzzz_dynahud.rad_hud_enabled = false
+	end
+end
