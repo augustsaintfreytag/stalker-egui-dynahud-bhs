@@ -476,7 +476,7 @@ function dynahud_main_hud_controller()
 end
 
 local bhs_hud_tg_update = 0
-local bhs_hud_tg_update_step = 1000 --[ms]
+local bhs_hud_tg_update_step = 500 --[ms]
 
 function dynahud_bhs_hud_controller()
 	if USE_UPDATE_STEP then
@@ -484,12 +484,14 @@ function dynahud_bhs_hud_controller()
 		if tg < bhs_hud_tg_update then
 			return
 		end
+
 		bhs_hud_tg_update = tg + bhs_hud_tg_update_step
 	end
 
 	if DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
 		if dynahud_dynamic_bhs_hud_on then
 			dynahud_dynamic_bhs_hud_update()
+
 			if bhs_hud_dismissed then
 				dynahud_bhs_hud_dismiss_update()
 			end
@@ -505,6 +507,7 @@ function dynahud_mag_hud_controller()
 	if tg < mag_hud_tg_update then
 		return
 	end
+
 	mag_hud_tg_update = tg + mag_hud_tg_update_step
 
 	if DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE then
@@ -1255,6 +1258,7 @@ end
 local last_cold_val = 0
 local cold_system_show_recovery = false
 local cold_system_critical = false
+
 function cold_system_update()
 	local cold_t = alife_storage_manager.get_state().cold
 	local cold_val = cold_t and cold_t.val
@@ -1321,7 +1325,8 @@ function cold_system_update()
 end
 
 local cold_hud_tg_update = 0
-local cold_hud_tg_update_step = 1000 --[ms]
+local cold_hud_tg_update_step = 500 --[ms]
+
 function cold_system_controller()
 	if USE_UPDATE_STEP then
 		local tg = time_global()
@@ -1453,7 +1458,7 @@ function dynahud_bhs_hud_dismiss_update()
 	end
 end
 
-local function always_hide()
+local function always_hide_bhs_hud()
 	local always_hide = false
 	if DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE then
 		local serious_injured = is_serious_injury()
@@ -1472,44 +1477,23 @@ local function always_hide()
 end
 
 function dynahud_dynamic_bhs_hud_update()
-	-- call this function only if dynahud_dynamic_bhs_hud_on == true
-	-- this function is resposible to update the dynamic bhs hud based on the limb status
-	-- broken limbs
-	-- 		bhs hud not visible --> show hud
-	-- 		bhs hud visible --> do nothing
+	check_limbs_fully_healed()
 
-	-- limbs healed --> hide hud
-	-- 		bhs hud not visible --> do nothing
-	-- 		bhs hud visible --> hide hud
+	local did_exceed_cooldown_for_show = time_global() > time_hud_last_shown + DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT
+	local hud_is_hidden = zzz_player_injuries.show_hud_type == 0 and not dynahud_bhs_hud_visible
+	local hud_should_be_hidden_by_values = limbs_fully_healed or bhs_hud_dismissed or always_hide_bhs_hud()
+	local hud_should_be_hidden_by_logic = not preview_on and not inventory_opened and did_exceed_cooldown_for_show
+	local hud_should_be_hidden = hud_should_be_hidden_by_logic and hud_should_be_hidden_by_values
 
-	local time_since_dyn_bhs_update = time_global() - last_time_dyn_bhs_updated
-
-	-- we try to update the bhs hud every `dynahud_dyn_bhs_update_tick` (default 6 seconds)
-	if (time_since_dyn_bhs_update > DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_TICK) then
-		-- check if any limb is broken
-		check_limbs_fully_healed()
-		if not limbs_fully_healed and not bhs_hud_dismissed and not always_hide() then
-			-- broken limbs
-			-- we show the bhs hud only if it's not visible
-			if not dynahud_bhs_hud_visible then
-				zzz_player_injuries.show_hud_type = 2
-				dynahud_bhs_hud_visible = true
-			end
-			-- update the last bhs_update timestamp
-			last_time_dyn_bhs_updated = time_global()
-			-- limbs healed
-		else
-			-- bhs hud visible --> hide hud, hiding hud will be done after a while (default 15 seconds) though
-			if time_since_dyn_bhs_update > DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT then
-				if dynahud_bhs_hud_visible and not inventory_opened then
-					zzz_player_injuries.show_hud_type = 0
-					dynahud_bhs_hud_visible = false
-				end
-				-- update the last bhs_update timestamp
-				last_time_dyn_bhs_updated = time_global()
-			end
-		end
+	if hud_is_hidden and not hud_should_be_hidden then
+		zzz_player_injuries.show_hud_type = 2
+		dynahud_bhs_hud_visible = true
+	elseif not hud_is_hidden and hud_should_be_hidden then
+		zzz_player_injuries.show_hud_type = 0
+		dynahud_bhs_hud_visible = false
 	end
+
+	last_time_dyn_bhs_updated = time_global()
 end
 
 function create_dismiss_bhs_event()
@@ -1530,8 +1514,8 @@ function create_dismiss_bhs_event()
 		end
 		-- printf("dynahud_bhs_hud_visible %s inventory_opened %s",dynahud_bhs_hud_visible, inventory_opened)
 		if dynahud_bhs_hud_visible and not inventory_opened then
-			zzz_player_injuries.show_hud_type = 0
-			dynahud_bhs_hud_visible = false
+			-- zzz_player_injuries.show_hud_type = 0
+			-- dynahud_bhs_hud_visible = false
 			bhs_hud_dismissed = true
 			time_bhs_hud_dismissed = time_global()
 			previous_limbs_total_injury = limbs_total_injury
@@ -1546,21 +1530,16 @@ end
 
 ------------------------ Overriding zzz_player_injuries functions ------------------------
 
-local inv_closed_hud_type = nil
+last_inv_closed_bhs_hud_type = nil
+
 local function actor_menu_on_mode_changed(mode, last_mode)
 	--printf("ActorMenu_on_mode_changed mode %s last_mode %s",mode,last_mode )
 	if mode == 1 then
 		if DYNAHUD_BHS_SUPPORT then
-			inv_closed_hud_type = zzz_player_injuries.show_hud_type
+			last_inv_closed_bhs_hud_type = zzz_player_injuries.show_hud_type
 		end
 
 		inventory_opened = true
-
-		-- when opening the inventory the bhs hud will be shown only if dynahud_dynamic_bhs_hud_on
-		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type ~= 2 then
-			zzz_player_injuries.show_hud_type = 2
-			dynahud_bhs_hud_visible = true
-		end
 	end
 
 	if last_mode == 1 then --inv closed
@@ -1573,23 +1552,6 @@ local function actor_menu_on_mode_changed(mode, last_mode)
 
 		if DYNAHUD_ICONS_HUD_AUTOHIDE and DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW then
 			show_status_icons()
-		end
-
-		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type == 2 then
-			if dynahud_dynamic_bhs_hud_on and not DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE then
-				if limbs_fully_healed or bhs_hud_dismissed then
-					zzz_player_injuries.show_hud_type = 0
-					dynahud_bhs_hud_visible = false
-				end
-			elseif not dynahud_dynamic_bhs_hud_on then
-				zzz_player_injuries.show_hud_type = inv_closed_hud_type
-
-				if inv_closed_hud_type == 0 then
-					dynahud_bhs_hud_visible = false
-				else
-					dynahud_bhs_hud_visible = true
-				end
-			end
 		end
 	end --looting closed
 end
