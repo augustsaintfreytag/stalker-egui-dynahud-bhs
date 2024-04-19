@@ -1019,23 +1019,24 @@ local time_hud_last_shown = -1
 local time_since_all_bars_hidden = -1
 
 function dynahud_main_hud_update()
-	local maingameui = ActorMenu.get_maingame()
-	local hud_is_hidden = check_all_mainhud_bars_are_hidden()
-	local hud_should_be_hidden = check_all_mainhud_bars_are_static_and_above_threshold()
-
 	if preview_on then check_preview_expired() end
 
 	-- Define timeout as minimum time the HUD should remain visible after being shown
 	local did_exceed_cooldown_for_show = time_global() > time_hud_last_shown + DYNAHUD_MAIN_HUD_BG_AUTOHIDE_TIMEOUT
 
+	local maingameui = ActorMenu.get_maingame()
+	local hud_is_hidden = check_all_mainhud_bars_are_hidden()
+	local hud_should_be_hidden = not preview_on and did_exceed_cooldown_for_show and
+		check_all_mainhud_bars_are_static_and_above_threshold()
+
 	-- if all bars are above threshold and static (and minimum time visible was exceeded), hide everything
-	if not hud_is_hidden and did_exceed_cooldown_for_show and hud_should_be_hidden and not preview_on then
+	if not hud_is_hidden and hud_should_be_hidden then
 		maingameui.m_ui_hud_states.m_ui_health_bar_show = false
 		maingameui.m_ui_hud_states.m_ui_stamina_bar_show = false
 		maingameui.m_ui_hud_states.m_ui_psy_bar_show = false
 
 		hide_mainhud_bg()
-	elseif preview_on or (hud_is_hidden and not hud_should_be_hidden) then
+	elseif hud_is_hidden and not hud_should_be_hidden then
 		-- if preview mode is enabled or any of the bars are below threshold, show everything
 		maingameui.m_ui_hud_states.m_ui_health_bar_show = true
 		maingameui.m_ui_hud_states.m_ui_psy_bar_show = true
@@ -1342,6 +1343,7 @@ function enable_bhs_hud()
 	dynahud_dynamic_bhs_hud_on = true
 	zzz_player_injuries.show_hud_type = 0
 	dynahud_pref_hud_type = 0
+
 	print_tip("ui_mcm_dynahud_dynamic_bhs_hud_enabled")
 	print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on")
 end
@@ -1351,6 +1353,7 @@ function disable_bhs_hud()
 	dynahud_bhs_hud_visible = false
 	dynahud_dynamic_bhs_hud_on = false
 	dynahud_pref_hud_type = 0
+
 	print_tip("ui_mcm_dynahud_dynamic_bhs_hud_disabled")
 end
 
@@ -1398,6 +1401,7 @@ local rightarm_difference
 local leftarm_difference
 local rightleg_difference
 local leftleg_difference
+
 local function evaluate_player_injury()
 	head_difference = zzz_player_injuries.maxhp.head - zzz_player_injuries.health.head + zzz_player_injuries.timedhp
 		.head
@@ -1563,6 +1567,14 @@ local function actor_menu_on_mode_changed(mode, last_mode)
 		-- when closing the inventory the bhs hud will be hidden if the dynahud_dynamic_bhs_hud_on is true and no limbs are broken
 		inventory_opened = false
 
+		if DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW then
+			preview_vitals()
+		end
+
+		if DYNAHUD_ICONS_HUD_AUTOHIDE and DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW then
+			show_status_icons()
+		end
+
 		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type == 2 then
 			if dynahud_dynamic_bhs_hud_on and not DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE then
 				if limbs_fully_healed or bhs_hud_dismissed then
@@ -1579,27 +1591,17 @@ local function actor_menu_on_mode_changed(mode, last_mode)
 				end
 			end
 		end
-
-		if DYNAHUD_ICONS_HUD_AUTOHIDE and DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW then
-			show_status_icons()
-		end
 	end --looting closed
 end
 
 ----------------------- Input Keys handling ---------------------------------------------
 
-local function bhs_hud_on_key_press(dik)
-	if dik == DIK_keys.DIK_H then
-		create_dismiss_bhs_event()
-	end
+local function bhs_hud_on_key_press()
+	create_dismiss_bhs_event()
 end
 
 local function bhs_hud_on_key_release(dik)
 	-- bhs hud toggle key
-	if dik ~= DIK_keys.DIK_H then
-		return
-	end
-
 	RemoveTimeEvent("bhs_keypress", "bhs_keypress_long")
 
 	if not bhs_change_state then
@@ -1615,32 +1617,50 @@ local function bhs_hud_on_key_release(dik)
 	bhs_change_state = false
 end
 
-local function mainhud_on_key_release(dik)
-	-- main hud toggle key
-	local bind = dik_to_bind(dik)
-	if (bind == key_bindings.kCUSTOM6) then
-		local main_hud_on = get_console_cmd(1, "hud_draw")
+local function mainhud_on_key_release()
+	local main_hud_on = get_console_cmd(1, "hud_draw")
 
-		if main_hud_on then
-			print_tip("ui_mcm_dynahud_main_hud_off", 1000)
-		else
-			print_tip("ui_mcm_dynahud_main_hud_on", 1000)
-		end
+	if main_hud_on then
+		print_tip("ui_mcm_dynahud_main_hud_off", 1000)
+	else
+		print_tip("ui_mcm_dynahud_main_hud_on", 1000)
 	end
 end
 
 local function on_key_release(dik)
-	mainhud_on_key_release(dik)
-	if DYNAHUD_BHS_SUPPORT then bhs_hud_on_key_release(dik) end
-	companion_hud_on_key_release(dik)
+	local bind = dik_to_bind(dik)
+
+	if dik == DIK_keys.DIK_H then
+		if DYNAHUD_BHS_SUPPORT then bhs_hud_on_key_release(dik) end
+		return
+	end
+
+	if (bind == key_bindings.kCUSTOM6) then
+		mainhud_on_key_release()
+		return
+	end
+
+	if bind == key_bindings.kCUSTOM18 then
+		companion_hud_on_key_release(dik)
+		return
+	end
 end
 
 local function on_key_press(dik)
-	if DYNAHUD_BHS_SUPPORT then bhs_hud_on_key_press(dik) end
-	companion_hud_on_key_press(dik)
-end
+	if dik == DIK_keys.DIK_V then
+		preview_vitals()
+		return
+	end
 
-local function on_key_hold(dik)
+	if dik == DIK_keys.DIK_H and DYNAHUD_BHS_SUPPORT then
+		bhs_hud_on_key_press()
+		return
+	end
+
+	if bind == key_bindings.kCUSTOM18 then
+		companion_hud_on_key_press()
+		return
+	end
 end
 
 ----------------------- MAGAZINES ---------------------------------------------
@@ -1752,24 +1772,16 @@ local function check_companion_hud_preview_expired()
 	return companion_hud_preview_on
 end
 
-function companion_hud_on_key_press(dik)
-	local bind = dik_to_bind(dik)
-	if bind == key_bindings.kCUSTOM18 then
-		preview_companion_hud_event()
-	end
+function companion_hud_on_key_press()
+	preview_companion_hud_event()
 end
 
 function companion_hud_on_key_release(dik)
-	local bind = dik_to_bind(dik)
-	if bind == key_bindings.kCUSTOM18 then
-		if DYNAHUD_COMPANION_HUD_AUTOHIDE then
-			RemoveTimeEvent("companion_hud_keypress", "companion_hud_keypress_long")
-			--printf("companion_hud_preview_on %s", companion_hud_preview_on)
-			if not companion_hud_preview_on then
-				--printf("axr_companions.on_key_release")
-				axr_companions.on_key_release(dik)
-			end
-		else
+	if DYNAHUD_COMPANION_HUD_AUTOHIDE then
+		RemoveTimeEvent("companion_hud_keypress", "companion_hud_keypress_long")
+		--printf("companion_hud_preview_on %s", companion_hud_preview_on)
+		if not companion_hud_preview_on then
+			--printf("axr_companions.on_key_release")
 			axr_companions.on_key_release(dik)
 		end
 	else
@@ -1871,7 +1883,6 @@ function on_game_start()
 	end
 	RegisterScriptCallback("ActorMenu_on_mode_changed", actor_menu_on_mode_changed)
 	RegisterScriptCallback("on_key_press", on_key_press)
-	RegisterScriptCallback("on_key_hold", on_key_hold)
 	UnregisterScriptCallback("on_key_release", axr_companions.on_key_release)
 	RegisterScriptCallback("on_key_release", on_key_release)
 	RegisterScriptCallback("actor_on_net_destroy", dynahud_on_destroy)
