@@ -8,6 +8,12 @@ function on_xml_read()
 			on_dynahud_ui_read(xml_obj)
 		elseif xml_path == [[ui\maingame_16.xml]] then
 			on_maingame_16_read(xml_obj)
+		elseif xml_path == [[ui\mag_hud.xml]] then
+			on_mag_hud_read(xml_obj)
+		elseif xml_path == [[ui\ish_firemode_hud.xml]] then
+			on_ish_firemode_hud_read(xml_obj)
+		elseif xml_path == [[ui\ui_bgac_component.xml]] then
+			on_ui_bgac_component_read(xml_obj)
 		end
 	end)
 end
@@ -33,6 +39,25 @@ function on_maingame_16_read(xml_obj)
 	-- Take `progress_bar_psy` and apply `y` of `703`.
 	local progress_bar_psy_element_object = xml_obj:query("progress_bar_psy")[1]
 	xml_obj:setElementAttr(progress_bar_psy_element_object, { y = 707 })
+end
+
+function on_mag_hud_read(xml_obj)
+	for _, id in ipairs({ "pouch", "mag", "mini_ico" }) do
+		local mag_hud_element_object = xml_obj:query(id)[1]
+		xml_obj:setElementAttr(mag_hud_element_object, { y = 9999 })
+	end
+end
+
+function on_ish_firemode_hud_read(xml_obj)
+	for _, id in ipairs({ "fireMode", "fireMode_text" }) do
+		local mag_hud_element_object = xml_obj:query(id)[1]
+		xml_obj:setElementAttr(mag_hud_element_object, { y = 9999 })
+	end
+end
+
+function on_ui_bgac_component_read(xml_obj)
+	local radbar_display_element_object = xml_obj:query("ammo_display")[1]
+	xml_obj:setElementAttr(radbar_display_element_object, { y = 9999 })
 end
 
 -- General init
