@@ -1029,7 +1029,7 @@ function dynahud_main_hud_update()
 
 	local maingameui = ActorMenu.get_maingame()
 	local hud_is_hidden = check_all_mainhud_bars_are_hidden()
-	local hud_should_be_hidden = not preview_on and did_exceed_cooldown_for_show and
+	local hud_should_be_hidden = not preview_on and not inventory_opened and did_exceed_cooldown_for_show and
 		check_all_mainhud_bars_are_static_and_above_threshold()
 
 	-- if all bars are above threshold and static (and minimum time visible was exceeded), hide everything
