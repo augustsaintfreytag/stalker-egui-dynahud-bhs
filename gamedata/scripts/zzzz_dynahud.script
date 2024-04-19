@@ -30,8 +30,8 @@ local DYNAHUD_DYNAMIC_BHS_HUD_DISMISS_TIMEOUT_MAX = 15 * 60000 -- in seconds
 
 --- MCM PARAMS
 local DYNAHUD_MAIN_HUD_AUTOHIDE = false
-local DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE = false
-local DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT = 10000   -- time for the BHS hud to hide if conditions are met
+local DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE = true
+local DYNAHUD_DYNAMIC_BHS_HUD_UPDATE_HIDE_TIMEOUT = 5000    -- time for the BHS hud to hide if conditions are met
 local DYNAHUD_MAIN_HUD_HIDE_HEALTH_THRESHOLD = 0.99         -- min value of health for the bar to become visible
 local DYNAHUD_MAIN_HUD_HIDE_HEALTH_AUTOHIDE_TIMEOUT = 30000 -- time for the health bar to hide after last health value change
 local DYNAHUD_MAIN_HUD_HIDE_POWER_THRESHOLD = 0.60          -- min value of power for the bar to become visible
