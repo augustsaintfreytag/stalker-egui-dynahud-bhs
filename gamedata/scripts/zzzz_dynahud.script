@@ -1363,9 +1363,11 @@ function dynahud_bhs_hud_switcher()
 		zzz_player_injuries.show_hud_type = 2
 		dynahud_pref_hud_type = 2
 		dynahud_dynamic_bhs_hud_on = false
+
 		if not dynahud_bhs_hud_visible then
 			dynahud_bhs_hud_visible = true
 		end
+
 		zzz_player_injuries.show_hud_change_time = time_global()
 		print_tip("ui_mcm_dynahud_dynamic_bhs_hud_off")
 		print_tip("ui_mcm_dynahud_dynamic_bhs_hud_off_help1")
@@ -1374,11 +1376,14 @@ function dynahud_bhs_hud_switcher()
 		dynahud_pref_hud_type = 0
 		dynahud_dynamic_bhs_hud_on = true
 		bhs_hud_dismissed = false
+
 		if dynahud_bhs_hud_visible then
 			dynahud_bhs_hud_visible = false
 		end
+
 		zzz_player_injuries.show_hud_change_time = time_global()
 		print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on")
+
 		if limbs_fully_healed then
 			print_tip("ui_mcm_dynahud_dynamic_bhs_hud_on_noinjuries")
 		else
@@ -1538,23 +1543,26 @@ end
 ------------------------ Overriding zzz_player_injuries functions ------------------------
 
 local inv_closed_hud_type = nil
-local function ActorMenu_on_mode_changed(mode, last_mode)
+local function actor_menu_on_mode_changed(mode, last_mode)
 	--printf("ActorMenu_on_mode_changed mode %s last_mode %s",mode,last_mode )
 	if mode == 1 then
 		if DYNAHUD_BHS_SUPPORT then
 			inv_closed_hud_type = zzz_player_injuries.show_hud_type
 		end
+
 		inventory_opened = true
+
 		-- when opening the inventory the bhs hud will be shown only if dynahud_dynamic_bhs_hud_on
 		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type ~= 2 then
 			zzz_player_injuries.show_hud_type = 2
 			dynahud_bhs_hud_visible = true
 		end
 	end
+
 	if last_mode == 1 then --inv closed
 		-- when closing the inventory the bhs hud will be hidden if the dynahud_dynamic_bhs_hud_on is true and no limbs are broken
 		inventory_opened = false
-		--EmptyPreviewBars()
+
 		if DYNAHUD_BHS_SUPPORT and zzz_player_injuries.show_hud_type == 2 then
 			if dynahud_dynamic_bhs_hud_on and not DYNAHUD_DYNAMIC_BHS_HUD_ALWAYS_HIDE then
 				if limbs_fully_healed or bhs_hud_dismissed then
@@ -1563,6 +1571,7 @@ local function ActorMenu_on_mode_changed(mode, last_mode)
 				end
 			elseif not dynahud_dynamic_bhs_hud_on then
 				zzz_player_injuries.show_hud_type = inv_closed_hud_type
+
 				if inv_closed_hud_type == 0 then
 					dynahud_bhs_hud_visible = false
 				else
@@ -1587,18 +1596,23 @@ end
 
 local function bhs_hud_on_key_release(dik)
 	-- bhs hud toggle key
-	if dik == DIK_keys.DIK_H then
-		RemoveTimeEvent("bhs_keypress", "bhs_keypress_long")
-		if not bhs_change_state then
-			if DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
-				dynahud_bhs_hud_switcher()
-			elseif DYNAHUD_BHS_PATCH ~= 2 then
-				zzz_player_injuries.on_key_press(dik)
-			end
-			xr_sound.set_sound_play(db.actor:id(), "pda_tips")
-		end
-		bhs_change_state = false
+	if dik ~= DIK_keys.DIK_H then
+		return
 	end
+
+	RemoveTimeEvent("bhs_keypress", "bhs_keypress_long")
+
+	if not bhs_change_state then
+		if DYNAHUD_DYNAMIC_BHS_HUD_AUTOHIDE then
+			dynahud_bhs_hud_switcher()
+		elseif DYNAHUD_BHS_PATCH ~= 2 then
+			zzz_player_injuries.on_key_press(dik)
+		end
+
+		xr_sound.set_sound_play(db.actor:id(), "pda_tips")
+	end
+
+	bhs_change_state = false
 end
 
 local function mainhud_on_key_release(dik)
@@ -1606,39 +1620,11 @@ local function mainhud_on_key_release(dik)
 	local bind = dik_to_bind(dik)
 	if (bind == key_bindings.kCUSTOM6) then
 		local main_hud_on = get_console_cmd(1, "hud_draw")
+
 		if main_hud_on then
 			print_tip("ui_mcm_dynahud_main_hud_off", 1000)
 		else
 			print_tip("ui_mcm_dynahud_main_hud_on", 1000)
-		end
-	end
-end
-
-local compass_raised = false
-local function compass_on_key_press(dik)
-	-- local KEY = ui_mcm.get("rax_mmt/keybind")
-
-	if (dik == DIK_keys.DIK_RSHIFT) then
-		local maingameui = ActorMenu.get_maingame()
-		if (maingameui and maingameui.UIZoneMap) then
-			local m_clipFrame = maingameui.UIZoneMap:MapFrame()
-			local p = m_clipFrame:GetWndPos();
-			local m_background = maingameui.UIZoneMap:Background()
-			local b = m_background:GetWndPos();
-			-- printf("frame p.x %s p.y %s",name, p.x, p.y)
-			-- printf("bg b.x %s b.y %s", b.x, b.y)
-			if not compass_raised then
-				printf("raise compass")
-				p.y = p.y - 100
-				b.y = b.y - 100
-			else
-				printf("lower compass")
-				p.y = p.y + 100
-				b.y = b.y + 100
-			end
-			compass_raised = not compass_raised
-			m_clipFrame:SetWndPos(vector2():set(p.x, p.y));
-			m_background:SetWndPos(vector2():set(b.x, b.y));
 		end
 	end
 end
@@ -1652,6 +1638,9 @@ end
 local function on_key_press(dik)
 	if DYNAHUD_BHS_SUPPORT then bhs_hud_on_key_press(dik) end
 	companion_hud_on_key_press(dik)
+end
+
+local function on_key_hold(dik)
 end
 
 ----------------------- MAGAZINES ---------------------------------------------
@@ -1732,15 +1721,6 @@ function dynahud_mags_ui_update_ammocheck()
 	if DYNAHUD_MAGREDUX_SUPPORT and DYNAHUD_DYNAMIC_MAGHUD_AUTOHIDE and DYNAHUD_DYNAMIC_MAGHUD_SHOW_AMMOCHECK then
 		dynahud_mags_ui_update(ACTION.AMMO_CHECK)
 	end
-end
-
-local function dynahud_mags_ui_update_jammin()
-	local itm = db.actor:active_item()
-	local is_weapon = itm and IsWeapon(itm) or false
-	local is_suppoorted_weapon = magazines.is_supported_weapon(itm)
-	local state = itm and itm:get_state()
-	printf("DYNAHUD JAMMING weapon state %s", state)
-	dynahud_mags_ui_update(ACTION.UNJAMMING)
 end
 
 ----------------------------------- COMPANION HUD ---------------------------------------
@@ -1889,8 +1869,9 @@ function on_game_start()
 	if DYNAHUD_BHS_SUPPORT then
 		UnregisterScriptCallback("on_key_press", zzz_player_injuries.on_key_press)
 	end
-	RegisterScriptCallback("ActorMenu_on_mode_changed", ActorMenu_on_mode_changed)
+	RegisterScriptCallback("ActorMenu_on_mode_changed", actor_menu_on_mode_changed)
 	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_key_hold", on_key_hold)
 	UnregisterScriptCallback("on_key_release", axr_companions.on_key_release)
 	RegisterScriptCallback("on_key_release", on_key_release)
 	RegisterScriptCallback("actor_on_net_destroy", dynahud_on_destroy)
