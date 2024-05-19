@@ -1485,6 +1485,9 @@ function dynahud_dynamic_bhs_hud_update()
 	local hud_should_be_hidden_by_logic = not preview_on and not inventory_opened and did_exceed_cooldown_for_show
 	local hud_should_be_hidden = hud_should_be_hidden_by_logic and hud_should_be_hidden_by_values
 
+	-- Override: Only ever show BHS hud in inventory
+	hud_should_be_hidden = not inventory_opened
+
 	if hud_is_hidden and not hud_should_be_hidden then
 		zzz_player_injuries.show_hud_type = 2
 		dynahud_bhs_hud_visible = true
