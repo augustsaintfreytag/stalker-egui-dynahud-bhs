@@ -1516,7 +1516,7 @@ function create_dismiss_bhs_event()
 			return true
 		end
 		-- printf("dynahud_bhs_hud_visible %s inventory_opened %s",dynahud_bhs_hud_visible, inventory_opened)
-		if dynahud_bhs_hud_visible and not inventory_opened then
+		if dynahud_bhs_hud_visible then
 			-- zzz_player_injuries.show_hud_type = 0
 			-- dynahud_bhs_hud_visible = false
 			bhs_hud_dismissed = true
