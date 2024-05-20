@@ -4,4 +4,4 @@ A modification and compatibility patch of minor changes for the combination of t
 
 ## License
 
-This mod was created by Saint for free use by the STALKER modding community with basic attribution under the MIT license. Includes parts of Enhanced GUI created by Incbox, and DynaHUD created by Strangerism. Parts of this mod use DXML created by Demonized (https://github.com/themrdemonized).
+This mod was created by Saint for free use by the STALKER modding community with basic attribution under the MIT license. Includes parts of Enhanced GUI created by Incbox (https://www.moddb.com/mods/stalker-anomaly/addons/enhanced-gui), Dynamic Hud Manager created by Strangerism (https://www.moddb.com/mods/stalker-anomaly/addons/dynahud-hud-manager), Body Health System created by Grokitach (https://www.moddb.com/mods/stalker-anomaly/addons/100-groks-body-health-system-redux-for-151).
