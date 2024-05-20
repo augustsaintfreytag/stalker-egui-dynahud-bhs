@@ -851,7 +851,7 @@ function update_shooting_tg()
 
 	last_time_fired = time_global()
 	time_since_nofiring = 0
-	show_ammo_hud()
+	-- show_ammo_hud() -- Disable any ammo display.
 end
 
 function show_ammo_hud()
