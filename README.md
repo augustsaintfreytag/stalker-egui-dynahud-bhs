@@ -1,6 +1,6 @@
-# STALKER DynaHUD Changes
+# STALKER EGUI x DynaHUD x BHS
 
-A mod for GAMMA x EGUI x DynaHUD x BHS for STALKER Anomaly (Open X-Ray/Monolith engine) that disables the radiation bar, aligns other HUD elements to match, fades the HUD appearance to make it less intrusive, and rewrite DynaHUD's display logic to show and hide HUD elements as a group instead of bars and backgrounds separately. Additionally disables the blinking PDA notification icon.
+A modification and compatibility patch of minor changes for the combination of the GAMMA modpack, Enhanced GUI, DynaHUD (Dynamic HUD), and Body Health System for STALKER Anomaly (Open X-Ray/Monolith engine). This mod disables the radiation bar, aligns other HUD elements to match, and slightly fades psy, stamina, and health bars. Rewrites DynaHUD's display logic to show and hide HUD elements as a group instead of bars and backgrounds separately. Additionally disables the blinking PDA notification icon.
 
 ## License
 
