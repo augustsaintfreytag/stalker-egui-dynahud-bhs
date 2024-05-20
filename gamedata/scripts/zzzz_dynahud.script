@@ -1124,6 +1124,8 @@ function hide_mainhud_bg()
 	time_since_all_bars_hidden = time_global()
 
 	refresh_status_icons(MAIN_HUD_OFF)
+
+	zzz_player_injuries.update_hud()
 end
 
 function show_main_hud_bg()
@@ -1139,6 +1141,8 @@ function show_main_hud_bg()
 	all_bars_hidden_tg = -1
 	mainhud_hidden_tg = -1
 	main_hud_bg_visible = true
+
+	zzz_player_injuries.update_hud()
 end
 
 function set_main_hud_bg_visibility(show)
@@ -1557,6 +1561,8 @@ local function actor_menu_on_mode_changed(mode, last_mode)
 			show_status_icons()
 		end
 	end --looting closed
+
+	dynahud_dynamic_bhs_hud_update()
 end
 
 ----------------------- Input Keys handling ---------------------------------------------
