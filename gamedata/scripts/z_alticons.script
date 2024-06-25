@@ -1,0 +1,164 @@
+--[[
+Monkey patch to alticons script
+change the position of alt icons to match the main hud
+20/11/2020
+Anomaly game scripts used as reference: ui_sidhud.script by RavenAscendant
+
+Author: strangerism
+--]]
+local size_adjust = 0
+local function getglobal_size_adjust()
+	local size_adjust
+	if alticons then
+		size_adjust = alticons.size_adjust
+	else
+		size_adjust = 0.75
+	end
+
+	return size_adjust
+end
+
+MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_X_OFFSET = 0
+MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_Y_OFFSET = 0
+MAIN_HUD_BG_OFF_SIZE_ADJUST_OFFSET = 0
+MAIN_HUD_BG_OFF_ICONS_SPACING_OFFSET = 0
+
+MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_X_OFFSET = 0
+MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_Y_OFFSET = 0
+MAIN_HUD_BG_ON_SIZE_ADJUST_OFFSET = 0
+MAIN_HUD_BG_ON_ICONS_SPACING_OFFSET = 0
+
+dynamic_icons_hud = true
+MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_X = 0
+MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_Y = 0
+MAIN_HUD_BG_OFF_SIZE_ADJUST = 0
+
+MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_X = 0
+MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_Y = 0
+MAIN_HUD_BG_ON_SIZE_ADJUST = 0
+
+local x_translate = 0
+local y_translate = 0
+local spacing_adjust = 0
+local user_size_adjust = 0
+
+function main_hud_bg_off_status_icons()
+	--printf("main_hud_bg_off_status_icons")
+	x_translate = MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_X + MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_X_OFFSET
+	y_translate = MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_Y + MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_Y_OFFSET
+	size_adjust = getglobal_size_adjust() + MAIN_HUD_BG_OFF_SIZE_ADJUST
+	user_size_adjust = MAIN_HUD_BG_OFF_SIZE_ADJUST_OFFSET
+	spacing_adjust = MAIN_HUD_BG_OFF_ICONS_SPACING_OFFSET
+end
+
+function main_hud_bg_on_status_icons()
+	--printf("main_hud_bg_on_status_icons")
+	x_translate = MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_X + MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_X_OFFSET
+	y_translate = MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_Y + MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_Y_OFFSET
+	size_adjust = getglobal_size_adjust() + MAIN_HUD_BG_ON_SIZE_ADJUST
+	user_size_adjust = MAIN_HUD_BG_ON_SIZE_ADJUST_OFFSET
+	spacing_adjust = MAIN_HUD_BG_ON_ICONS_SPACING_OFFSET
+end
+
+local time_xml = nil
+function loadUIStatic()
+	if not time_xml then
+		time_xml = CScriptXmlInit()
+		time_xml:ParseFile("actor_menu.xml")
+	end
+end
+
+function actor_status.UIIndicators:InitControls()
+	ratio = (device().height / device().width) / (768 / 1024)
+	self.W = 39 * size_adjust *
+		ratio                                                                  --Only change by amout of margin in the icon textures
+	self.offset = ((2 * ratio * size_adjust * user_size_adjust) + spacing_adjust) --
+
+	local xml = utils_xml.get_hud_xml()
+
+	self.dialog = xml:InitStatic("indicators", self)
+	pos = self.dialog:GetWndPos()
+
+	-- printf("[Dynahud Indicators window pos x.y %s.%s]", pos.x, pos.y)
+	-- printf("[Dynahud Indicators window offset %s.%s]", x_translate, y_translate)
+
+	if not default_saved then
+		DEFAULT_X = pos.x
+		DEFAULT_Y = pos.y
+		DEFAULT_SIZE = getglobal_size_adjust()
+	end
+
+	self.dialog:SetWndPos(vector2():set(pos.x + x_translate, pos.y - 8 + y_translate)) --nudgeing it up slightly for reasons. might add an adjustment in game for this as well.
+	--utils_xml.correct_ratio(self.dialog)
+	self.dialog:Show(false)
+
+	local t_size = size_table(actor_status.indicators)
+	for i = 1, t_size do
+		local x = (i - 1) * (self.W + self.offset)
+		if self.mirrored then
+			x = (1 - i) * (self.W + self.offset)
+		end
+		-- printf("[Dynahud] icon x pos = %s ", x)
+
+		self.slot[i] = {}
+		self.slot[i].back_s = xml:InitStatic("indicators:static", self.dialog)
+		self.slot[i].back_f = xml:InitStatic("indicators:flashing", self.dialog)
+		self.slot[i].icon_s = xml:InitStatic("indicators:static", self.dialog)
+		self.slot[i].icon_f = xml:InitStatic("indicators:flashing", self.dialog)
+		for k, ele in pairs(self.slot[i]) do
+			ele:SetWndPos(vector2():set(x, 0 - ele:GetHeight() * (size_adjust - 1)))
+			ele:SetWndSize(vector2():set(ele:GetWidth() * ratio * size_adjust * user_size_adjust,
+				ele:GetHeight() * size_adjust * user_size_adjust))
+		end
+		if zzzz_dynahud.DYNAHUD_ICONS_HUD_TIMERS then
+			-- xcvb boost time
+			loadUIStatic()
+			self.slot[i].xcvb_time = time_xml:InitTextWnd("quick_slot3_text", self)
+			local dialog_pos = self.dialog:GetWndPos()
+			local icon_pos = self.slot[i].icon_f:GetWndPos()
+			local text_x_pos = dialog_pos.x + icon_pos.x
+			local text_y_pos = dialog_pos.y + icon_pos.y - 17
+			self.slot[i].xcvb_time:SetWndPos(vector2():set(text_x_pos - 5, text_y_pos + 10))
+
+			local icon_width = self.slot[i].icon_f:GetWidth()
+			local self_height = self.slot[i].xcvb_time:GetHeight()
+			self.slot[i].xcvb_time:SetWndSize(vector2():set(icon_width, self_height))
+			self.slot[i].xcvb_time:SetText("")
+			---------------------			
+		end
+	end
+end
+
+function dynahud_on_mcm_change()
+	load_mcm_settings()
+
+	actor_status.deactivate_hud()
+	actor_status.activate_hud()
+	zzzz_dynahud.autoshow_main_hud_bg()
+end
+
+function load_mcm_settings()
+	local DYNAHUD_ICONS_HUD_AUTOHIDE = dynahud_mcm.get_config("icons_hud/autohide")
+
+	if not DYNAHUD_ICONS_HUD_AUTOHIDE then
+		x_translate = MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_X
+		y_translate = MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_Y
+		size_adjust = getglobal_size_adjust()
+	end
+
+	XY_MULTIPLIER = (dynahud_mcm.get_config("icons_hud/xy_multiply_by")) * 1
+
+	MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_X_OFFSET = (dynahud_mcm.get_config("icons_hud/main_hud_off_x")) * XY_MULTIPLIER
+	MAIN_HUD_BG_OFF_STATUS_ICONS_POSITION_Y_OFFSET = (dynahud_mcm.get_config("icons_hud/main_hud_off_y")) * XY_MULTIPLIER
+	MAIN_HUD_BG_OFF_SIZE_ADJUST_OFFSET = (dynahud_mcm.get_config("icons_hud/main_hud_off_size_mul")) * XY_MULTIPLIER
+	MAIN_HUD_BG_OFF_ICONS_SPACING_OFFSET = dynahud_mcm.get_config("icons_hud/main_hud_off_spacing")
+	MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_X_OFFSET = (dynahud_mcm.get_config("icons_hud/main_hud_on_x")) * XY_MULTIPLIER
+	MAIN_HUD_BG_ON_STATUS_ICONS_POSITION_Y_OFFSET = (dynahud_mcm.get_config("icons_hud/main_hud_on_y")) * XY_MULTIPLIER
+	MAIN_HUD_BG_ON_SIZE_ADJUST_OFFSET = (dynahud_mcm.get_config("icons_hud/main_hud_on_size_mul")) * XY_MULTIPLIER
+	MAIN_HUD_BG_ON_ICONS_SPACING_OFFSET = dynahud_mcm.get_config("icons_hud/main_hud_on_spacing")
+end
+
+function on_game_start()
+	printf("overriding altiicons actor_status.UIIndicators:InitControls")
+	load_mcm_settings()
+end

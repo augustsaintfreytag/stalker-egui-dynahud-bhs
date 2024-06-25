@@ -1080,18 +1080,23 @@ local MAIN_HUD_ON = "on"
 local MAIN_HUD_OFF = "off"
 
 local function refresh_status_icons(main_hud_status)
+	if not z_alticons or not z_alticons.dynamic_icons_hud then
+		return
+	end
+
 	if DYNAHUD_ICONS_HUD_AUTOHIDE then
 		--printf("refresh_status_icons main hud is $s", main_hud_status)
-		if z_alticons and z_alticons.dynamic_icons_hud then
-			if main_hud_status == MAIN_HUD_ON then
-				z_alticons.main_hud_bg_on_status_icons()
-			else
-				z_alticons.main_hud_bg_off_status_icons()
-			end
 
-			actor_status.deactivate_hud()
-			actor_status.activate_hud()
+		if main_hud_status == MAIN_HUD_ON then
+			z_alticons.main_hud_bg_on_status_icons()
+		else
+			z_alticons.main_hud_bg_off_status_icons()
 		end
+
+		actor_status.deactivate_hud()
+		actor_status.activate_hud()
+	else
+		z_alticons.main_hud_bg_on_status_icons()
 	end
 end
 
@@ -1123,7 +1128,8 @@ function hide_mainhud_bg()
 	mainhud_hidden_tg = time_global()
 	time_since_all_bars_hidden = time_global()
 
-	refresh_status_icons(MAIN_HUD_OFF)
+	-- refresh_status_icons(MAIN_HUD_OFF)
+	refresh_status_icons(MAIN_HUD_ON)
 
 	zzz_player_injuries.update_hud()
 end
@@ -1168,54 +1174,64 @@ function status_icons_controller()
 		if tg < icons_hud_tg_update then
 			return
 		end
+
 		icons_hud_tg_update = tg + icons_hud_tg_update_step
 	end
-	if preview_status_icons then
-		local time_since_preview_status_icons = time_global() - preview_status_icons_tg
-		if time_since_preview_status_icons > DYNAHUD_ICONS_HUD_PREVIEW_TIME then
-			preview_status_icons = false
-			preview_status_icons_tg = -1
-		end
-		return
-	end
 
-	if not main_hud_bg_visible then
-		-- printf("mainhud_hidden_tg %s ", mainhud_hidden_tg)
-		local time_since_mainhud_hidden = time_global() - mainhud_hidden_tg
-		local icon_timers_expiring = false
-		if DYNAHUD_ICONS_HUD_TIMERS then
-			icon_timers_expiring = actor_status.is_icon_expiring(DYNAHUD_ICONS_HUD_TIMERS_EXPIRING)
-		end
-		--printf("time_since_mainhud_hidden %s ", time_since_mainhud_hidden)
-		if time_since_mainhud_hidden > DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT and not status_icons_hidden and not icon_timers_expiring then
-			-- printf("deactivate_icons_hud")
-			actor_status.deactivate_hud()
-			status_icons_hidden = true
-			status_icons_hidden_tg = time_global()
-		else
-			-- printf("cannot deactivate_icons_hud")
-			local time_since_status_icons_hidden = time_global() - status_icons_hidden_tg
-			if status_icons_hidden and (icon_timers_expiring or time_since_status_icons_hidden > DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER) then
-				-- printf("activate_icons_hud")
-				if time_since_status_icons_hidden > DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER then
-					actor_status.activate_hud(true)
-				else
-					actor_status.activate_hud()
-				end
-				status_icons_hidden = false
-				preview_status_icons = true
-				status_icons_hidden_tg = -1
-				preview_status_icons_tg = time_global()
-			end
-		end
-	elseif status_icons_hidden then
-		-- printf("main_hud_bg_visible")
-		actor_status.activate_hud()
-		status_icons_hidden = false
-		preview_status_icons = false
-		status_icons_hidden_tg = -1
-		preview_status_icons_tg = -1
-	end
+	actor_status.activate_hud()
+	status_icons_hidden = false
+	preview_status_icons = false
+	status_icons_hidden_tg = -1
+	preview_status_icons_tg = -1
+
+	-- if preview_status_icons then
+	-- 	local time_since_preview_status_icons = time_global() - preview_status_icons_tg
+	-- 	if time_since_preview_status_icons > DYNAHUD_ICONS_HUD_PREVIEW_TIME then
+	-- 		preview_status_icons = false
+	-- 		preview_status_icons_tg = -1
+	-- 	end
+	-- 	return
+	-- end
+
+	-- if not main_hud_bg_visible then
+	-- 	-- printf("mainhud_hidden_tg %s ", mainhud_hidden_tg)
+	-- 	local time_since_mainhud_hidden = time_global() - mainhud_hidden_tg
+	-- 	local icon_timers_expiring = false
+
+	-- 	if DYNAHUD_ICONS_HUD_TIMERS then
+	-- 		icon_timers_expiring = actor_status.is_icon_expiring(DYNAHUD_ICONS_HUD_TIMERS_EXPIRING)
+	-- 	end
+
+	-- 	--printf("time_since_mainhud_hidden %s ", time_since_mainhud_hidden)
+	-- 	if time_since_mainhud_hidden > DYNAHUD_ICONS_HUD_AUTOHIDE_TIMEOUT and not status_icons_hidden and not icon_timers_expiring then
+	-- 		-- printf("deactivate_icons_hud")
+	-- 		actor_status.deactivate_hud()
+	-- 		status_icons_hidden = true
+	-- 		status_icons_hidden_tg = time_global()
+	-- 	else
+	-- 		-- printf("cannot deactivate_icons_hud")
+	-- 		local time_since_status_icons_hidden = time_global() - status_icons_hidden_tg
+	-- 		if status_icons_hidden and (icon_timers_expiring or time_since_status_icons_hidden > DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER) then
+	-- 			-- printf("activate_icons_hud")
+	-- 			if time_since_status_icons_hidden > DYNAHUD_ICONS_HUD_PREVIEW_SHOW_TIMER then
+	-- 				actor_status.activate_hud(true)
+	-- 			else
+	-- 				actor_status.activate_hud()
+	-- 			end
+	-- 			status_icons_hidden = false
+	-- 			preview_status_icons = true
+	-- 			status_icons_hidden_tg = -1
+	-- 			preview_status_icons_tg = time_global()
+	-- 		end
+	-- 	end
+	-- elseif status_icons_hidden then
+	-- 	-- printf("main_hud_bg_visible")
+	-- 	actor_status.activate_hud()
+	-- 	status_icons_hidden = false
+	-- 	preview_status_icons = false
+	-- 	status_icons_hidden_tg = -1
+	-- 	preview_status_icons_tg = -1
+	-- end
 end
 
 function show_status_icons()
@@ -1553,9 +1569,9 @@ local function actor_menu_on_mode_changed(mode, last_mode)
 		-- when closing the inventory the bhs hud will be hidden if the dynahud_dynamic_bhs_hud_on is true and no limbs are broken
 		inventory_opened = false
 
-		if DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW then
-			preview_vitals()
-		end
+		-- if DYNAHUD_MAIN_HUD_PREVIEW_ON_SHOW then
+		-- 	preview_vitals()
+		-- end
 
 		if DYNAHUD_ICONS_HUD_AUTOHIDE and DYNAHUD_ICONS_HUD_INVENTORY_PREVIEW then
 			show_status_icons()
@@ -1849,9 +1865,11 @@ function on_game_start()
 
 	RegisterScriptCallback("actor_on_first_update", dynahud_actor_on_first_update)
 	RegisterScriptCallback("actor_on_update", dynahud_actor_on_update)
-	if DYNAHUD_BHS_SUPPORT then
-		UnregisterScriptCallback("on_key_press", zzz_player_injuries.on_key_press)
-	end
+
+	-- if DYNAHUD_BHS_SUPPORT then
+	-- 	UnregisterScriptCallback("on_key_press", zzz_player_injuries.on_key_press)
+	-- end
+
 	RegisterScriptCallback("ActorMenu_on_mode_changed", actor_menu_on_mode_changed)
 	RegisterScriptCallback("on_key_press", on_key_press)
 	UnregisterScriptCallback("on_key_release", axr_companions.on_key_release)
