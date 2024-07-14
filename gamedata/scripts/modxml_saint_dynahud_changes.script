@@ -36,13 +36,17 @@ function on_maingame_16_read(xml_obj)
 	local flashing_icon_texture_element_object = xml_obj:query("flashing_icons > flashing_icon")[1]
 	xml_obj:insertFromXMLString("", flashing_icon_texture_element_object)
 
-	-- Take `progress_bar_stamina` and apply `height` of `2` (same as psy bar).
-	local stamina_bar_element_object = xml_obj:query("progress_bar_stamina")[1]
-	xml_obj:setElementAttr(stamina_bar_element_object, { height = 2 })
+	-- Take `progress_bar_health` and apply `height`.
+	local health_bar_element_object = xml_obj:query("progress_bar_health")[1]
+	xml_obj:setElementAttr(health_bar_element_object, { height = 4, width = 100, x = 34, y = 729 })
 
-	-- Take `progress_bar_psy` and apply `y` of `703`.
+	-- Take `progress_bar_stamina` and apply `height`.
+	local stamina_bar_element_object = xml_obj:query("progress_bar_stamina")[1]
+	xml_obj:setElementAttr(stamina_bar_element_object, { height = 4, width = 100, x = 34, y = 720 })
+
+	-- Take `progress_bar_psy` and move offscreen.
 	local progress_bar_psy_element_object = xml_obj:query("progress_bar_psy")[1]
-	xml_obj:setElementAttr(progress_bar_psy_element_object, { y = 707 })
+	xml_obj:setElementAttr(progress_bar_psy_element_object, { height = 4, width = 100, x = 34, y = 9999 })
 end
 
 function on_mag_hud_read(xml_obj)

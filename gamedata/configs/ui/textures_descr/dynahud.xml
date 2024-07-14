@@ -14,9 +14,9 @@
 	</file>
 
     <file name="ui\dynahud\mainhud_extended">
-		<texture id="ui_dynahud_health" x="145" y="283" width="116" height="10" />
-		<texture id="ui_dynahud_psy" x="145" y="326" width="116" height="2" />
-		<texture id="ui_dynahud_stamina" x="145" y="311" width="116" height="2" />
+		<texture id="ui_dynahud_health" x="3" y="4" width="100" height="4" />
+		<texture id="ui_dynahud_stamina" x="3" y="9" width="100" height="4" />
+		<texture id="ui_dynahud_psy" x="3" y="14" width="100" height="4" />
 	</file>
 
     <file name="ui\dynahud\mainhud_bg">
