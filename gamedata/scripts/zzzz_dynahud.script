@@ -10,14 +10,15 @@ local last_time_dyn_bhs_updated = nil
 local dynahud_bhs_hud_visible = nil
 local dynahud_dynamic_bhs_hud_on = nil
 local dynahud_pref_hud_type = nil
+local dynahud_initialize_time = 0
 local limbs_fully_healed = nil
-local myhealth = 0
 local last_time_unequipped = nil
 local bhs_hud_dismissed = nil
 local time_bhs_hud_dismissed = nil
 local limbs_total_injury = nil
 local previous_limbs_total_injury = nil
 local bhs_change_state = nil
+local myhealth = 0
 
 inventory_opened = nil
 weapon_is_equipped = nil
@@ -800,43 +801,57 @@ function show_minimap(show)
 	end
 end
 
-print_tip = print_tip or function(text, delay, ...)
-	if DYNAHUD_NOTIFICATIONS then
-		local text = tostring(text)
-		printf(text, ...)
-		if not db.actor then
-			return
-		end
-
-		local ico = "ui_inGame2_Dengi_otdani"
-		local text_color = utils_xml.get_color("pda_white")
-		local arg_color = utils_xml.get_color("d_green")
-		local function colorize(s)
-			return arg_color .. s .. text_color
-		end
-		local i = 0
-		local t = { ... }
-		if #t > 0 then
-			local function sr(a)
-				i = i + 1
-				if (type(t[i]) == 'userdata') then
-					if (t[i].x and t[i].y) then
-						return colorize(vec_to_str(t[i]))
-					end
-					return colorize('userdata')
-				end
-				return colorize(tostring(t[i]))
-			end
-			text = string.gsub(game.translate_string(text), "%%s", sr)
-		else
-			text = game.translate_string(text)
-		end
-		text = text_color .. text
-		if delay == nil then
-			delay = 6000
-		end
-		news_manager.send_tip(db.actor, text, nil, ico, delay)
+function print_tip(text, delay, ...)
+	if not DYNAHUD_NOTIFICATIONS then
+		return
 	end
+
+	if time_global() < dynahud_initialize_time + 1000 then
+		-- Prevent notification spam after loading game.
+		return
+	end
+
+	local text = tostring(text)
+	printf(text, ...)
+
+	if not db.actor then
+		return
+	end
+
+	local ico = "ui_inGame2_Dengi_otdani"
+	local text_color = utils_xml.get_color("pda_white")
+	local arg_color = utils_xml.get_color("d_green")
+
+	local function colorize(s)
+		return arg_color .. s .. text_color
+	end
+
+	local i = 0
+	local t = { ... }
+
+	if #t > 0 then
+		local function sr(a)
+			i = i + 1
+			if (type(t[i]) == 'userdata') then
+				if (t[i].x and t[i].y) then
+					return colorize(vec_to_str(t[i]))
+				end
+				return colorize('userdata')
+			end
+			return colorize(tostring(t[i]))
+		end
+		text = string.gsub(game.translate_string(text), "%%s", sr)
+	else
+		text = game.translate_string(text)
+	end
+
+	text = text_color .. text
+
+	if delay == nil then
+		delay = 6000
+	end
+
+	news_manager.send_tip(db.actor, text, nil, ico, delay)
 end
 
 ----------------------- WEAPON HUD SUPPORT ---------------------------------------------
@@ -1805,8 +1820,9 @@ function is_companions_squad_in_danger()
 			end
 		end
 	end
+
 	if not squad_is_peaceful then
-		printf("squad is under attack or attacking")
+		-- printf("squad is under attack or attacking")
 	end
 	--printf("squad is resolved peaceful %s", squad_is_peaceful)
 	--printf("============================================================================================")
@@ -1862,6 +1878,8 @@ end
 
 function on_game_start()
 	initialize_plugins_support()
+
+	dynahud_initialize_time = time_global()
 
 	RegisterScriptCallback("actor_on_first_update", dynahud_actor_on_first_update)
 	RegisterScriptCallback("actor_on_update", dynahud_actor_on_update)
